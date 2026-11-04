@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Welcome — pull the cord</title>
+<meta name="description" content="A flower lamp by the wall. Pull its cord to the end and the room lights up." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<main class="room" id="room">
+
+  <div class="light" aria-hidden="true">
+    <div class="wash"></div>
+    <div class="bloom"></div>
+    <div class="cone"></div>
+    <div class="pool"></div>
+  </div>
+
+  <div class="vignette" aria-hidden="true"></div>
+
+  <div class="lamp" id="lamp-rig">
+    <svg class="lamp-svg" viewBox="0 0 300 460" role="presentation">
+      <defs>
+        <radialGradient id="bulbLit" cx="50%" cy="38%" r="70%">
+          <stop class="lit-core" offset="0%" />
+          <stop class="lit-mid" offset="55%" />
+          <stop class="lit-edge" offset="100%" />
+        </radialGradient>
+        <radialGradient id="escaping" cx="50%" cy="30%" r="75%">
+          <stop offset="0%" stop-color="var(--lamp)" stop-opacity="0.85" />
+          <stop offset="100%" stop-color="var(--lamp)" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+
+      <!-- the supply cord coils on the floor, then one stem rises and arcs over -->
+      <path class="coil" d="M224 434c0 17-148 17-148 0s126-16 126-1-108 12-108-1 92-16 88-37" />
+      <path class="stem" d="M182 396C170 320 168 250 176 190c8-56-18-88-56-82" />
+
+      <!-- the flower, nodding from the end of the stem; the bulb hides inside it -->
+      <g class="head" transform="translate(120 108) rotate(22) scale(1.12)">
+        <ellipse class="bulb" cx="0" cy="30" rx="17" ry="14" />
+        <path class="petal petal-back" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-52)" />
+        <path class="petal petal-back" d="M0 0c22 8 32 40 18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(52)" />
+        <path class="petal" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-25)" />
+        <path class="petal" d="M0 0c22 8 32 40 18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(25)" />
+        <path class="petal petal-front" d="M0 0c-20 10-26 42-12 66 6 12 18 12 24 0C26 42 20 10 0 0z" />
+        <path class="calyx" d="M-16-8C-12-22 12-22 16-8c2 10-8 18-16 18S-18 2-16-8z" />
+        <!-- light leaking between the petals, so the flower reads as lit from inside -->
+        <ellipse class="escaping" cx="0" cy="40" rx="44" ry="40" />
+      </g>
+    </svg>
+  </div>
+
+  <!-- the pull chain hangs from the underside of the flower; the cord itself is drawn in JS -->
+  <div class="pull" id="pull">
+    <svg class="pull-svg" viewBox="0 0 1 1">
+      <line class="pull-cord" x1="0" y1="0" x2="0" y2="78" />
+      <circle class="pull-tab" cx="0" cy="78" r="8" />
+    </svg>
+    <button class="pull-hit" id="pull-button" type="button"
+            aria-pressed="false" aria-label="Pull the cord to the end to turn the lamp on"></button>
+    <span class="pull-hint" aria-hidden="true">pull</span>
+  </div>
+
+  <div class="content">
+    <section class="welcome">
+      <h1 class="headline">
+        <span class="line line-1">Choose a card</span>
+        <span class="line line-2">to begin</span>
+      </h1>
+      <p class="eyebrow">one dim yellow bulb</p>
+    </section>
+
+    <section class="cards" id="cards" aria-label="Card">
+      <article class="card" tabindex="0" data-page="table" aria-label="Periodic Table card — activate to open">
+        <div class="card-tilt">
+          <div class="card-inner">
+            <div class="face front">
+              <div class="el-tile" aria-hidden="true">
+                <span class="el-tile-num">1</span>
+                <span class="el-tile-sym">H</span>
+                <span class="el-tile-name">Hydrogen</span>
+              </div>
+              <h2 class="card-title">Periodic Table</h2>
+              <p class="card-teaser">all 118 elements</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <footer class="readout" aria-live="polite">
+    <span class="swatch" aria-hidden="true"></span>
+    <span class="shade-name" id="shade-name">Dim Yellow</span>
+  </footer>
+</main>
+
+<!-- the periodic table page, revealed by an expanding circle -->
+<section class="page" id="page-table" data-mode="table" tabindex="-1" aria-label="Periodic table of the elements" aria-hidden="true">
+  <header class="page-bar">
+    <h2 class="page-title">Periodic<span>Table</span></h2>
+    <div class="hud" id="hud" aria-live="polite">
+      <span class="hud-sym" id="hud-sym">&mdash;</span>
+      <span class="hud-meta">
+        <span class="hud-name" id="hud-name">hover an element</span>
+        <span class="hud-cat" id="hud-cat">118 entries &middot; 18 groups</span>
+      </span>
+    </div>
+  </header>
+
+  <div class="table-scroll" id="stage">
+    <div class="table" id="table"></div>
+    <p class="stage-note" id="stage-note" aria-hidden="true">drag to turn &middot; scroll to zoom</p>
+  </div>
+
+  <footer class="legend" id="legend"></footer>
+
+  <!-- one element, opened by a click: it grows across the left half while the table blurs away on the right -->
+  <div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="facts-title" aria-hidden="true">
+    <button class="detail-zone" id="detail-zone" type="button" tabindex="-1" aria-label="Close element details"></button>
+
+    <article class="zoomer" id="zoomer">
+      <span class="zoom-num" id="zoom-num"></span>
+      <span class="zoom-sym" id="zoom-sym"></span>
+      <span class="zoom-name" id="zoom-name"></span>
+      <span class="zoom-mass" id="zoom-mass"></span>
+    </article>
+
+    <aside class="facts">
+      <button class="facts-close" id="facts-close" type="button">close &times;</button>
+      <h3 class="facts-title" id="facts-title"></h3>
+      <p class="facts-sub" id="facts-sub"></p>
+      <p class="facts-note" id="facts-note"></p>
+      <dl class="facts-list" id="facts-list"></dl>
+      <h4 class="facts-h">Safety</h4>
+      <ul class="hazards" id="facts-hazards"></ul>
+      <figure class="bohr" id="bohr"></figure>
+    </aside>
+  </div>
+</section>
+
+<!-- the menu: a tab in the corner, and a panel that slides in from the left -->
+<button class="menu-tab" id="menu-tab" type="button" aria-expanded="false" aria-controls="drawer" aria-label="Open the menu">
+  <span class="menu-line" aria-hidden="true"></span>
+  <span class="menu-line" aria-hidden="true"></span>
+  <span class="menu-line" aria-hidden="true"></span>
+</button>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawer" aria-label="Menu" aria-hidden="true">
+  <header class="drawer-head">
+    <span class="drawer-title">Menu</span>
+    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close the menu">&times;</button>
+  </header>
+
+  <!-- liquid navigation: the bar and the raised bubble are one blurred body,
+       so the active item grows out of the bar on a gooey neck -->
+  <nav class="goo" id="goo-nav" aria-label="Sections and arrangements">
+    <svg class="goo-defs" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="gooey">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
+          <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -11" />
+        </filter>
+      </defs>
+    </svg>
+
+    <div class="goo-field" aria-hidden="true">
+      <div class="goo-bar"></div>
+      <div class="goo-dot" id="goo-dot"></div>
+    </div>
+    <div class="goo-pop" id="goo-pop" aria-hidden="true"></div>
+
+    <div class="goo-items">
+      <button class="goo-item" type="button" data-nav="lamp" aria-pressed="false">
+        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l3 8H4z" /><path d="M12 11v9" /><path d="M8.5 20h7" /></svg>
+        <span class="goo-label">lamp</span>
+        <span class="sr">Back to the lamp</span>
+      </button>
+      <button class="goo-item" type="button" data-nav="table" aria-pressed="true">
+        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M9 4v6" /><path d="M15 10v10" /></svg>
+        <span class="goo-label">table</span>
+        <span class="sr">Flat periodic table</span>
+      </button>
+      <button class="goo-item" type="button" data-nav="sphere" aria-pressed="false">
+        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><ellipse cx="12" cy="12" rx="8.5" ry="3.6" /><path d="M12 3.5v17" /></svg>
+        <span class="goo-label">sphere</span>
+        <span class="sr">Sphere arrangement</span>
+      </button>
+      <button class="goo-item" type="button" data-nav="helix" aria-pressed="false">
+        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3c7 2 7 5 0 7s-7 5 0 7 7 5 0 7" /><path d="M15 3c-7 2-7 5 0 7s7 5 0 7-7 5 0 7" /></svg>
+        <span class="goo-label">helix</span>
+        <span class="sr">Helix arrangement</span>
+      </button>
+      <button class="goo-item" type="button" data-nav="grid" aria-pressed="false">
+        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>
+        <span class="goo-label">grid</span>
+        <span class="sr">Grid arrangement</span>
+      </button>
+      <button class="goo-item" type="button" data-nav="settings" aria-pressed="false">
+        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" /></svg>
+        <span class="goo-label">settings</span>
+        <span class="sr">Settings</span>
+      </button>
+    </div>
+  </nav>
+
+  <section class="drawer-pane" data-pane="settings" hidden>
+    <h3 class="drawer-sub">Lamp colour</h3>
+    <div class="swatches" id="schemes" role="group" aria-label="Colour scheme">
+      <button class="swatch-btn is-on" type="button" data-scheme="amber" aria-pressed="true" style="--dot: hsl(44 78% 56%)"><span class="sr">Amber</span></button>
+      <button class="swatch-btn" type="button" data-scheme="rose" aria-pressed="false" style="--dot: hsl(350 74% 62%)"><span class="sr">Rose</span></button>
+      <button class="swatch-btn" type="button" data-scheme="moss" aria-pressed="false" style="--dot: hsl(150 52% 52%)"><span class="sr">Moss</span></button>
+      <button class="swatch-btn" type="button" data-scheme="ice" aria-pressed="false" style="--dot: hsl(196 82% 60%)"><span class="sr">Ice</span></button>
+    </div>
+
+    <h3 class="drawer-sub">Theme</h3>
+    <div class="choices" id="themes" role="group" aria-label="Theme">
+      <button class="choice is-on" type="button" data-theme="midnight" aria-pressed="true">midnight</button>
+      <button class="choice" type="button" data-theme="graphite" aria-pressed="false">graphite</button>
+      <button class="choice" type="button" data-theme="lagoon" aria-pressed="false">lagoon</button>
+    </div>
+
+    <h3 class="drawer-sub">Sensitivity</h3>
+    <label class="slide">
+      <span>turn</span>
+      <input type="range" id="sens-turn" min="0.1" max="3" step="0.1" value="1" />
+      <output id="sens-turn-out">1.0</output>
+    </label>
+    <label class="slide">
+      <span>zoom</span>
+      <input type="range" id="sens-zoom" min="0.1" max="3" step="0.1" value="1" />
+      <output id="sens-zoom-out">1.0</output>
+    </label>
+  </section>
+
+  <!-- the lamp waits at the bottom of the panel; its cord is the way back out -->
+  <div class="drawer-foot" id="drawer-foot">
+    <div class="mini-room is-lit" id="mini-room">
+      <div class="mini-glow" aria-hidden="true"></div>
+      <svg class="mini-svg lamp-svg" viewBox="0 0 300 460" role="presentation">
+        <defs>
+          <radialGradient id="miniBulb" cx="50%" cy="38%" r="70%">
+            <stop class="lit-core" offset="0%" />
+            <stop class="lit-mid" offset="55%" />
+            <stop class="lit-edge" offset="100%" />
+          </radialGradient>
+          <radialGradient id="miniEscaping" cx="50%" cy="30%" r="75%">
+            <stop offset="0%" stop-color="var(--lamp)" stop-opacity="0.85" />
+            <stop offset="100%" stop-color="var(--lamp)" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+
+        <path class="coil" d="M224 434c0 17-148 17-148 0s126-16 126-1-108 12-108-1 92-16 88-37" />
+        <path class="stem" d="M182 396C170 320 168 250 176 190c8-56-18-88-56-82" />
+
+        <g class="head" transform="translate(120 108) rotate(22) scale(1.12)">
+          <ellipse class="bulb" cx="0" cy="30" rx="17" ry="14" />
+          <path class="petal petal-back" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-52)" />
+          <path class="petal petal-back" d="M0 0c22 8 32 40 18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(52)" />
+          <path class="petal" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-25)" />
+          <path class="petal" d="M0 0c22 8 32 40-18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(25)" />
+          <path class="petal petal-front" d="M0 0c-20 10-26 42-12 66 6 12 18 12 24 0C26 42 20 10 0 0z" />
+          <path class="calyx" d="M-16-8C-12-22 12-22 16-8c2 10-8 18-16 18S-18 2-16-8z" />
+          <ellipse class="escaping" cx="0" cy="40" rx="44" ry="40" />
+        </g>
+      </svg>
+
+      <div class="mini-pull" id="mini-pull">
+        <svg class="mini-pull-svg" viewBox="0 0 1 1">
+          <line class="mini-cord" x1="0" y1="0" x2="0" y2="34" />
+          <circle class="mini-dot" cx="0" cy="34" r="6.5" />
+        </svg>
+        <button class="mini-hit" id="mini-tab" type="button" aria-label="Pull the cord to go back"></button>
+      </div>
+    </div>
+    <p class="drawer-note">pull the cord to go back</p>
+  </div>
+</aside>
+
+<div class="reveal" id="reveal" aria-hidden="true"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+<script src="elements.js"></script>
+<script src="script.js"></script>
+<script src="fx.js"></script>
+</body>
+</html>
