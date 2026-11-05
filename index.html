@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Welcome — pull the cord</title>
-<meta name="description" content="A flower lamp by the wall. Pull its cord to the end and the room lights up." />
+<title>Sci-lamp — light up the elements</title>
+<meta name="description" content="Sci-lamp — an interactive periodic table and chemistry notebook. Pull the flower lamp's cord to the end and the room lights up." />
+<meta name="theme-color" content="#f0c14b" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet" />
@@ -21,6 +22,20 @@
   </div>
 
   <div class="vignette" aria-hidden="true"></div>
+
+  <!-- ambient dressing for the landing: a quiet atom of orbit rings by the bulb
+       and a few motes catching the light — purely decorative, never interactive -->
+  <div class="room-decor" aria-hidden="true">
+    <span class="decor-orbit decor-orbit-a"></span>
+    <span class="decor-orbit decor-orbit-b"></span>
+    <span class="decor-orbit decor-orbit-c"></span>
+    <span class="mote mote-1"></span>
+    <span class="mote mote-2"></span>
+    <span class="mote mote-3"></span>
+    <span class="mote mote-4"></span>
+    <span class="mote mote-5"></span>
+    <span class="mote mote-6"></span>
+  </div>
 
   <div class="lamp" id="lamp-rig">
     <svg class="lamp-svg" viewBox="0 0 300 460" role="presentation">
@@ -69,34 +84,15 @@
   <div class="content">
     <section class="welcome">
       <h1 class="headline">
-        <span class="line line-1">Choose a card</span>
-        <span class="line line-2">to begin</span>
+        <span class="line">Sci-lamp</span>
       </h1>
-      <p class="eyebrow">one dim yellow bulb</p>
-    </section>
-
-    <section class="cards" id="cards" aria-label="Card">
-      <article class="card" tabindex="0" data-page="table" aria-label="Periodic Table card — activate to open">
-        <div class="card-tilt">
-          <div class="card-inner">
-            <div class="face front">
-              <div class="el-tile" aria-hidden="true">
-                <span class="el-tile-num">1</span>
-                <span class="el-tile-sym">H</span>
-                <span class="el-tile-name">Hydrogen</span>
-              </div>
-              <h2 class="card-title">Periodic Table</h2>
-              <p class="card-teaser">all 118 elements</p>
-            </div>
-          </div>
-        </div>
-      </article>
+      <p class="eyebrow">light up the elements</p>
     </section>
   </div>
 
   <footer class="readout" aria-live="polite">
     <span class="swatch" aria-hidden="true"></span>
-    <span class="shade-name" id="shade-name">Dim Yellow</span>
+    <span class="shade-name" id="shade-name">Sci-lamp</span>
   </footer>
 </main>
 
@@ -111,53 +107,49 @@
         <span class="hud-cat" id="hud-cat">118 entries &middot; 18 groups</span>
       </span>
     </div>
+    <button class="sandbox-entry" id="sandbox-entry" type="button" aria-label="Go to Sandbox Mode">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg>
+      <span>Sandbox mode</span>
+    </button>
   </header>
+
+  <div class="tools" id="tools">
+    <label class="tool-search">
+      <span class="sr">Search elements by name, symbol or number</span>
+      <input type="search" id="search" placeholder="search — name, symbol or number" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
+    </label>
+    <label class="tool-heat">
+      <span class="sr">Heatmap property</span>
+      <select id="hm-prop">
+        <option value="">heatmap: off</option>
+        <option value="en">electronegativity</option>
+        <option value="radius">atomic radius</option>
+        <option value="melt">melting point</option>
+        <option value="boil">boiling point</option>
+        <option value="ie1">ionisation energy</option>
+      </select>
+    </label>
+    <button class="tool-btn" id="filter-reset" type="button">reset</button>
+    <span class="filter-status" id="filter-status" role="status"></span>
+  </div>
 
   <div class="table-scroll" id="stage">
     <div class="table" id="table"></div>
     <p class="stage-note" id="stage-note" aria-hidden="true">drag to turn &middot; scroll to zoom</p>
+    <p class="empty-note" id="empty-note" hidden>no elements match — try clearing the filters</p>
   </div>
 
-  <footer class="legend" id="legend"></footer>
-
-  <!-- one element, opened by a click: it grows across the left half while the table blurs away on the right -->
-  <div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="facts-title" aria-hidden="true">
-    <button class="detail-zone" id="detail-zone" type="button" tabindex="-1" aria-label="Close element details"></button>
-
-    <article class="zoomer" id="zoomer">
-      <span class="zoom-num" id="zoom-num"></span>
-      <span class="zoom-sym" id="zoom-sym"></span>
-      <span class="zoom-name" id="zoom-name"></span>
-      <span class="zoom-mass" id="zoom-mass"></span>
-    </article>
-
-    <aside class="facts">
-      <button class="facts-close" id="facts-close" type="button">close &times;</button>
-      <h3 class="facts-title" id="facts-title"></h3>
-      <p class="facts-sub" id="facts-sub"></p>
-      <p class="facts-note" id="facts-note"></p>
-      <dl class="facts-list" id="facts-list"></dl>
-      <h4 class="facts-h">Safety</h4>
-      <ul class="hazards" id="facts-hazards"></ul>
-      <figure class="bohr" id="bohr"></figure>
-    </aside>
+  <div class="hm-legend" id="hm-legend" hidden aria-hidden="true">
+    <span class="hm-cap" id="hm-unit"></span>
+    <span class="hm-scale">
+      <span class="hm-end" id="hm-low"></span>
+      <span class="hm-bar"></span>
+      <span class="hm-end" id="hm-high"></span>
+    </span>
+    <span class="hm-null"><i aria-hidden="true"></i>no data</span>
   </div>
-</section>
 
-<!-- the menu: a tab in the corner, and a panel that slides in from the left -->
-<button class="menu-tab" id="menu-tab" type="button" aria-expanded="false" aria-controls="drawer" aria-label="Open the menu">
-  <span class="menu-line" aria-hidden="true"></span>
-  <span class="menu-line" aria-hidden="true"></span>
-  <span class="menu-line" aria-hidden="true"></span>
-</button>
-
-<div class="scrim" id="scrim"></div>
-
-<aside class="drawer" id="drawer" aria-label="Menu" aria-hidden="true">
-  <header class="drawer-head">
-    <span class="drawer-title">Menu</span>
-    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close the menu">&times;</button>
-  </header>
+  <footer class="legend" id="legend" aria-label="Categories — click to filter"></footer>
 
   <!-- liquid navigation: the bar and the raised bubble are one blurred body,
        so the active item grows out of the bar on a gooey neck -->
@@ -203,23 +195,292 @@
         <span class="goo-label">grid</span>
         <span class="sr">Grid arrangement</span>
       </button>
-      <button class="goo-item" type="button" data-nav="settings" aria-pressed="false">
-        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" /></svg>
-        <span class="goo-label">settings</span>
-        <span class="sr">Settings</span>
-      </button>
     </div>
   </nav>
 
-  <section class="drawer-pane" data-pane="settings" hidden>
-    <h3 class="drawer-sub">Lamp colour</h3>
-    <div class="swatches" id="schemes" role="group" aria-label="Colour scheme">
-      <button class="swatch-btn is-on" type="button" data-scheme="amber" aria-pressed="true" style="--dot: hsl(44 78% 56%)"><span class="sr">Amber</span></button>
-      <button class="swatch-btn" type="button" data-scheme="rose" aria-pressed="false" style="--dot: hsl(350 74% 62%)"><span class="sr">Rose</span></button>
-      <button class="swatch-btn" type="button" data-scheme="moss" aria-pressed="false" style="--dot: hsl(150 52% 52%)"><span class="sr">Moss</span></button>
-      <button class="swatch-btn" type="button" data-scheme="ice" aria-pressed="false" style="--dot: hsl(196 82% 60%)"><span class="sr">Ice</span></button>
+</section>
+
+<!-- nomenclature & formula writing: entry, handbook and guided paths -->
+<section class="page page-nom" id="page-nom" tabindex="-1" aria-label="Nomenclature and formula writing" aria-hidden="true">
+  <header class="page-bar">
+    <h2 class="page-title">Nomenclature<span>&amp; Formula Writing</span></h2>
+    <button class="page-back" id="nom-back" type="button" aria-label="Back to the lamp">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+      <span>back</span>
+    </button>
+  </header>
+
+  <div class="nom-app" id="nom-app">
+    <section class="nom-view nom-entry is-on" id="nom-entry" tabindex="-1" aria-label="Nomenclature start">
+      <p class="nom-kicker">learning lab &middot; nomenclature</p>
+      <h3 class="nom-lead">Names and formulas, <em>decoded</em>.</h3>
+      <p class="nom-sub">Browse the handbook at your own pace, or work through a guided path of short challenges. Progress is saved on this device.</p>
+
+      <div class="nom-choices">
+        <button class="nom-choice" id="nom-go-docs" type="button">
+          <span class="nom-choice-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M8 7h7" /><path d="M8 11h5" /></svg>
+          </span>
+          <span class="nom-choice-body">
+            <span class="nom-choice-title">Explore the docs</span>
+            <span class="nom-choice-text">Rules, examples and a quick reference for ions, acids, prefixes and oxidation states.</span>
+            <span class="nom-choice-meta" id="nom-stat-docs">8 handbook sections</span>
+          </span>
+          <span class="nom-choice-go" aria-hidden="true">&rarr;</span>
+        </button>
+
+        <button class="nom-choice" id="nom-go-paths" type="button">
+          <span class="nom-choice-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 19c0-4 4-4 7-4s7 0 7-4-4-4-7-4-7 0-7-4" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="3" r="2" /><circle cx="12" cy="11" r="1.6" /></svg>
+          </span>
+          <span class="nom-choice-body">
+            <span class="nom-choice-title">Choose a path</span>
+            <span class="nom-choice-text">Short guided sequences of multiple choice, formula building, naming and charge balancing.</span>
+            <span class="nom-choice-meta" id="nom-stat-paths">5 guided paths</span>
+          </span>
+          <span class="nom-choice-go" aria-hidden="true">&rarr;</span>
+        </button>
+      </div>
+
+      <button class="nom-resume" id="nom-resume" type="button" hidden></button>
+      <p class="nom-note">No accounts, no server &mdash; your progress stays in this browser.</p>
+    </section>
+
+    <section class="nom-view nom-docs" id="nom-docs" tabindex="-1" aria-label="Handbook" hidden>
+      <div class="nom-top">
+        <button class="nom-crumb" id="docs-back" type="button">&larr; start</button>
+        <label class="docs-search">
+          <span class="sr">Search the handbook</span>
+          <input type="search" id="docs-search" placeholder="search rules and examples" autocomplete="off" spellcheck="false" aria-controls="docs-list" />
+        </label>
+      </div>
+      <div class="docs-nav" id="docs-nav" role="group" aria-label="Jump to a handbook section"></div>
+      <p class="docs-status" id="docs-status" role="status"></p>
+      <div class="docs-list" id="docs-list"></div>
+    </section>
+
+    <section class="nom-view nom-paths" id="nom-paths" tabindex="-1" aria-label="Guided paths" hidden>
+      <div class="nom-top">
+        <button class="nom-crumb" id="paths-back" type="button">&larr; start</button>
+        <span class="nom-top-note">progress saves on this device</span>
+      </div>
+      <header class="nom-view-head">
+        <p class="nom-kicker">guided paths</p>
+        <h3>Pick a trail</h3>
+        <p>Four short challenges per path, with feedback and explanations after every step.</p>
+      </header>
+      <div class="paths-grid" id="paths-grid"></div>
+    </section>
+
+    <section class="nom-view nom-runner" id="nom-runner" tabindex="-1" aria-label="Guided path" hidden>
+      <div class="nom-top">
+        <button class="nom-crumb" id="runner-back" type="button">&larr; paths</button>
+        <span class="runner-meta" id="runner-meta"></span>
+        <button class="nom-crumb runner-restart" id="runner-restart" type="button">restart</button>
+      </div>
+      <header class="runner-head">
+        <h3 id="runner-title"></h3>
+        <div class="runner-dots" id="runner-dots" aria-hidden="true"></div>
+        <p class="sr" id="runner-progress" role="status"></p>
+      </header>
+      <div class="runner-stage" id="runner-stage"></div>
+    </section>
+  </div>
+</section>
+
+<!-- sandbox: a bench over the table page; the table stays mounted underneath -->
+<section class="sandbox" id="sandbox" tabindex="-1" aria-label="Sandbox mode" aria-hidden="true" hidden>
+  <div class="sandbox-inner">
+    <header class="page-bar sandbox-bar">
+      <h2 class="page-title">Sandbox<span>Mode</span></h2>
+      <p class="sandbox-sub">build compounds atom by atom</p>
+      <button class="page-back sandbox-back" id="sandbox-back" type="button">
+        <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        <span>back to table</span>
+      </button>
+    </header>
+
+    <div class="sandbox-grid">
+      <section class="sandbox-bench" aria-label="Workspace">
+        <div class="sb-workhead">
+          <span class="sb-kicker">reaction mixture</span>
+          <span class="sb-atom-count" id="sb-atom-count" role="status">empty bench</span>
+        </div>
+
+        <div class="sb-workspace" id="sb-workspace" aria-label="Reaction mixture. Drop elements here.">
+          <div class="sb-atoms" id="sb-atoms"></div>
+          <p class="sb-empty" id="sb-empty">Tap an element in the palette, or drag it here. Every tap adds one atom; use the steppers to set how many of each.</p>
+        </div>
+
+        <p class="sb-recipe" id="sb-recipe">Nothing on the bench yet.</p>
+
+        <div class="sb-result" id="sb-result" role="status" aria-live="polite">
+          <p class="sb-result-empty">Combine any number of atoms. Metals with metals make alloys; a metal with a nonmetal makes an ionic compound; nonmetals make curated covalent molecules.</p>
+        </div>
+
+        <div class="sb-actions">
+          <button class="sb-go" id="sb-combine" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16" /><path d="M4 12h16" /></svg>
+            <span>combine</span>
+          </button>
+          <div class="sb-process" id="sb-process" role="group" aria-label="Process">
+            <button class="sb-proc is-on" type="button" data-process="auto" aria-pressed="true">auto</button>
+            <button class="sb-proc" type="button" data-process="alloy" aria-pressed="false">alloy</button>
+            <button class="sb-proc" type="button" data-process="ionic" aria-pressed="false">ionic</button>
+            <button class="sb-proc" type="button" data-process="covalent" aria-pressed="false">covalent</button>
+          </div>
+          <button class="tool-btn sb-reset" id="sb-reset" type="button">clear bench</button>
+        </div>
+      </section>
+
+      <aside class="sandbox-side">
+        <section class="sb-panel sb-palette-panel" aria-labelledby="sb-palette-h">
+          <div class="sb-panel-head">
+            <h3 id="sb-palette-h">Elements</h3>
+            <span class="sb-panel-note">tap to add &middot; drag to the bench</span>
+          </div>
+          <div class="sb-palette" id="sb-palette" role="group" aria-label="Element palette"></div>
+        </section>
+
+        <section class="sb-panel sb-info-panel" aria-labelledby="sb-info-h">
+          <div class="sb-panel-head">
+            <h3 id="sb-info-h">Element notes</h3>
+            <button class="sb-text-btn" id="sb-info-full" type="button">full details</button>
+          </div>
+          <div class="sb-info" id="sb-elinfo" aria-live="polite"></div>
+        </section>
+
+        <section class="sb-panel" aria-labelledby="sb-chal-h">
+          <div class="sb-panel-head">
+            <h3 id="sb-chal-h">Challenges</h3>
+            <span class="sb-score" id="sb-score">0 / 7</span>
+          </div>
+          <div class="sb-progress" aria-hidden="true"><span id="sb-progress-fill"></span></div>
+          <p class="sr" id="sb-progress-text" role="status"></p>
+          <div class="sb-challenges" id="sb-challenges"></div>
+          <p class="sb-hintline" id="sb-hintline" aria-live="polite" hidden></p>
+        </section>
+      </aside>
     </div>
 
+    <section class="sb-shelf" id="sb-shelf" aria-labelledby="sb-shelf-h">
+      <div class="sb-shelf-head">
+        <div class="sb-shelf-title">
+          <h3 id="sb-shelf-h">My products</h3>
+          <span class="sb-shelf-count" id="sb-shelf-count">0 saved</span>
+        </div>
+        <div class="sb-shelf-tools">
+          <button class="sb-text-btn" id="sb-shelf-index" type="button">compound index</button>
+          <button class="sb-text-btn is-danger" id="sb-shelf-clear" type="button">clear all</button>
+        </div>
+      </div>
+      <div class="sb-shelf-list" id="sb-shelf-list"></div>
+      <p class="sb-save-status" id="sb-save-status" role="status" aria-live="polite"></p>
+    </section>
+
+    <p class="sb-note">A deliberately small model: curated compounds, fixed primary ions and variable-composition alloys. Every successful product is saved on this device.</p>
+  </div>
+</section>
+
+<!-- compound index: every catalogued compound, lit once discovered -->
+<section class="page page-index" id="page-index" tabindex="-1" aria-label="Compound index" aria-hidden="true">
+  <header class="page-bar">
+    <h2 class="page-title">Compound<span>Index</span></h2>
+    <p class="index-progress-text" id="index-progress-text">0 of 61 discovered</p>
+    <button class="page-back" id="index-back" type="button">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+      <span>back</span>
+    </button>
+  </header>
+
+  <div class="index-app">
+    <header class="index-intro">
+      <p class="nom-kicker">field guide &middot; compounds</p>
+      <h3 class="index-lead">Every compound the bench can make.</h3>
+      <p class="index-sub">Discover them by combining atoms in the sandbox. Found compounds keep their name and formula; the rest stay hidden behind a hint. Progress saves on this device.</p>
+      <div class="index-meter">
+        <div class="index-bar" role="progressbar" aria-labelledby="index-progress-text" aria-valuemin="0" aria-valuemax="61" aria-valuenow="0" id="index-bar"><span id="index-fill"></span></div>
+        <button class="sb-text-btn" id="index-sandbox" type="button">open the sandbox</button>
+      </div>
+    </header>
+    <div class="index-grid" id="index-grid"></div>
+  </div>
+</section>
+
+<!-- one shared sheet: element facts, compound detail, creation popup and index hints -->
+<div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="facts-title" aria-hidden="true" data-mode="element" data-cat="u">
+  <button class="detail-zone" id="detail-zone" type="button" tabindex="-1" aria-label="Close details"></button>
+
+  <article class="zoomer" id="zoomer">
+    <span class="zoom-num" id="zoom-num"></span>
+    <span class="zoom-sym" id="zoom-sym"></span>
+    <span class="zoom-name" id="zoom-name"></span>
+    <span class="zoom-mass" id="zoom-mass"></span>
+  </article>
+
+  <aside class="facts">
+    <button class="facts-close" id="facts-close" type="button">close &times;</button>
+    <h3 class="facts-title" id="facts-title"></h3>
+    <p class="facts-sub" id="facts-sub"></p>
+    <p class="facts-desc" id="facts-desc"></p>
+    <p class="facts-note" id="facts-note"></p>
+    <dl class="facts-list" id="facts-list"></dl>
+    <dl class="facts-list facts-ext" id="facts-ext"></dl>
+    <figure class="spectrum" id="spectrum" hidden></figure>
+    <h4 class="facts-h" id="facts-safety-h">Safety</h4>
+    <ul class="hazards" id="facts-hazards"></ul>
+    <figure class="bohr" id="bohr"></figure>
+    <div class="facts-actions" id="facts-actions" hidden></div>
+  </aside>
+</div>
+
+<!-- the menu: a tab in the corner, and a panel that slides in from the left -->
+<button class="menu-tab" id="menu-tab" type="button" aria-expanded="false" aria-controls="drawer" aria-label="Open the Sci-lamp menu">
+  <span class="menu-line" aria-hidden="true"></span>
+  <span class="menu-line" aria-hidden="true"></span>
+  <span class="menu-line" aria-hidden="true"></span>
+</button>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="drawer" id="drawer" aria-label="Sci-lamp menu" aria-hidden="true">
+  <div class="drawer-decor" aria-hidden="true">
+    <span class="decor-glow"></span>
+    <span class="decor-orb decor-orb-1"></span>
+    <span class="decor-orb decor-orb-2"></span>
+    <span class="decor-orb decor-orb-3"></span>
+  </div>
+
+  <header class="drawer-head">
+    <span class="drawer-title">Sci-lamp</span>
+    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close the menu">&times;</button>
+  </header>
+
+  <!-- every way in, in one place: the two sections, then the gear that unfolds settings -->
+  <div class="drawer-nav" id="drawer-nav" role="group" aria-label="Go to a section">
+    <button class="drawer-go" id="drawer-table" type="button">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M9 4v6" /><path d="M15 10v10" /></svg>
+      <span>Periodic Table</span>
+    </button>
+    <button class="drawer-go" id="drawer-nom" type="button">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg>
+      <span>Nomenclature &amp; Formula Writing</span>
+    </button>
+    <button class="drawer-go" id="drawer-index" type="button">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 0 4 18.5z" /><path d="M8 7h7" /><path d="M8 11h5" /><path d="M8 15h4" /></svg>
+      <span>Compound Index</span>
+    </button>
+    <button class="drawer-go" id="drawer-tutorial" type="button">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.5v.4" /><path d="M12 17h.01" /></svg>
+      <span>Tutorial</span>
+    </button>
+    <button class="drawer-go drawer-gear" id="drawer-gear" type="button" aria-expanded="false" aria-controls="drawer-settings">
+      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" /></svg>
+      <span>Settings</span>
+    </button>
+  </div>
+
+  <section class="drawer-pane" id="drawer-settings" data-pane="settings" hidden>
     <h3 class="drawer-sub">Theme</h3>
     <div class="choices" id="themes" role="group" aria-label="Theme">
       <button class="choice is-on" type="button" data-theme="midnight" aria-pressed="true">midnight</button>
@@ -243,7 +504,6 @@
   <!-- the lamp waits at the bottom of the panel; its cord is the way back out -->
   <div class="drawer-foot" id="drawer-foot">
     <div class="mini-room is-lit" id="mini-room">
-      <div class="mini-glow" aria-hidden="true"></div>
       <svg class="mini-svg lamp-svg" viewBox="0 0 300 460" role="presentation">
         <defs>
           <radialGradient id="miniBulb" cx="50%" cy="38%" r="70%">
@@ -280,15 +540,50 @@
         <button class="mini-hit" id="mini-tab" type="button" aria-label="Pull the cord to go back"></button>
       </div>
     </div>
+    <span class="drawer-sub swatch-cap">Lamp colour</span>
+    <div class="swatches" id="schemes" role="group" aria-label="Lamp colour">
+      <button class="swatch-btn is-on" type="button" data-scheme="amber" aria-pressed="true" style="--dot: hsl(44 78% 56%)"><span class="sr">Amber</span></button>
+      <button class="swatch-btn" type="button" data-scheme="rose" aria-pressed="false" style="--dot: hsl(350 74% 62%)"><span class="sr">Rose</span></button>
+      <button class="swatch-btn" type="button" data-scheme="moss" aria-pressed="false" style="--dot: hsl(150 52% 52%)"><span class="sr">Moss</span></button>
+      <button class="swatch-btn" type="button" data-scheme="ice" aria-pressed="false" style="--dot: hsl(196 82% 60%)"><span class="sr">Ice</span></button>
+    </div>
     <p class="drawer-note">pull the cord to go back</p>
   </div>
 </aside>
+
+<!-- guided tour: the spotlight is the only dimming layer, so each target stays legible -->
+<div class="tour" id="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-text" aria-hidden="true" hidden>
+  <div class="tour-block" id="tour-block" aria-hidden="true"></div>
+  <div class="tour-spot" id="tour-spot" aria-hidden="true"></div>
+  <section class="tour-panel" id="tour-panel">
+    <p class="tour-kicker" id="tour-step">step 1 of 14</p>
+    <h2 class="tour-title" id="tour-title"></h2>
+    <p class="tour-text" id="tour-text"></p>
+    <div class="tour-actions">
+      <button class="tour-skip" id="tour-skip" type="button">skip tour</button>
+      <div class="tour-dots" id="tour-dots" aria-hidden="true"></div>
+      <div class="tour-buttons">
+        <button class="tour-btn" id="tour-back" type="button">back</button>
+        <button class="tour-btn is-next" id="tour-next" type="button">next</button>
+      </div>
+    </div>
+  </section>
+</div>
 
 <div class="reveal" id="reveal" aria-hidden="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
 <script src="elements.js"></script>
+<script src="extended.js"></script>
+<script src="learn-data.js"></script>
+<script src="compounds.js"></script>
+<script src="store.js"></script>
+<script src="sandbox-data.js"></script>
 <script src="script.js"></script>
+<script src="nom-page.js"></script>
+<script src="sandbox.js"></script>
+<script src="index-page.js"></script>
+<script src="tutorial.js"></script>
 <script src="fx.js"></script>
 </body>
 </html>

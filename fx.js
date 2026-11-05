@@ -66,9 +66,17 @@
 
     p.windowResized = () => p.resizeCanvas(p.windowWidth, p.windowHeight);
 
+    /* clearing a full-screen canvas every frame is not free; only pay it when
+       something was actually painted since the last clear */
+    let dirty = false;
+
     p.draw = () => {
+      if (!glyphs.length && !drops.length) {
+        if (dirty) { p.clear(); dirty = false; }
+        return;
+      }
       p.clear();
-      if (!glyphs.length && !drops.length) return;
+      dirty = true;
       const [ir, ig, ib] = ink();
 
       if (Math.hypot(pointer.x - lastSpawn.x, pointer.y - lastSpawn.y) > GLYPH_STEP) spawnGlyph();

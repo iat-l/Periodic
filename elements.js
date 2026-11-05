@@ -145,3 +145,176 @@ const ELEMENTS = [
   [117, 'Ts', 'Tennessine', 'u', 17, 7, '[294]', 'rad', 'Group 17; a metal more than a halogen.'],
   [118, 'Og', 'Oganesson', 'u', 18, 7, '[294]', 'rad', 'Group 18; calculations say a solid, not a gas.'],
 ];
+
+/* ---------- shared physical state at 25 °C ----------
+   the detail modal, the sandbox and the compound notebook all read this table */
+
+const GAS_AT_25 = new Set([1, 2, 7, 8, 9, 10, 17, 18, 36, 54, 86]);
+const LIQUID_AT_25 = new Set([35, 80]);
+const UNKNOWN_AT_25 = new Set([104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118]);
+
+function stateAt25(num) {
+  if (GAS_AT_25.has(num)) return 'gas';
+  if (LIQUID_AT_25.has(num)) return 'liquid';
+  if (UNKNOWN_AT_25.has(num)) return 'unknown';
+  return 'solid';
+}
+
+/* ---------- common oxidation states ----------
+   one compact curated table, used by the detail modal and by the sandbox
+   charge-balance resolver, so the numbers are stated only once */
+
+const OXIDATION = {
+  1: '-1, +1', 2: '0', 3: '+1', 4: '+2', 5: '+3', 6: '-4, +2, +4', 7: '-3, +3, +5',
+  8: '-2', 9: '-1', 10: '0', 11: '+1', 12: '+2', 13: '+3', 14: '-4, +4',
+  15: '-3, +3, +5', 16: '-2, +4, +6', 17: '-1, +1, +3, +5, +7', 18: '0',
+  19: '+1', 20: '+2', 21: '+3', 22: '+2, +3, +4', 23: '+2, +3, +4, +5',
+  24: '+2, +3, +6', 25: '+2, +4, +7', 26: '+2, +3', 27: '+2, +3', 28: '+2',
+  29: '+1, +2', 30: '+2', 31: '+3', 32: '+2, +4', 33: '-3, +3, +5',
+  34: '-2, +4, +6', 35: '-1, +5', 36: '0, +2', 37: '+1', 38: '+2', 39: '+3',
+  40: '+4', 41: '+3, +5', 42: '+4, +6', 43: '+4, +7', 44: '+3, +4', 45: '+3',
+  46: '+2, +4', 47: '+1', 48: '+2', 49: '+3', 50: '+2, +4', 51: '+3, +5',
+  52: '-2, +4, +6', 53: '-1, +5, +7', 54: '0, +2, +4, +6', 55: '+1', 56: '+2',
+  57: '+3', 58: '+3, +4', 59: '+3', 60: '+3', 61: '+3', 62: '+3', 63: '+2, +3',
+  64: '+3', 65: '+3', 66: '+3', 67: '+3', 68: '+3', 69: '+3', 70: '+2, +3',
+  71: '+3', 72: '+4', 73: '+5', 74: '+4, +6', 75: '+4, +7', 76: '+3, +4',
+  77: '+3, +4', 78: '+2, +4', 79: '+1, +3', 80: '+1, +2', 81: '+1, +3',
+  82: '+2, +4', 83: '+3', 84: '+2, +4', 85: '-1, +1', 86: '0, +2', 87: '+1',
+  88: '+2', 89: '+3', 90: '+4', 91: '+5', 92: '+3, +4, +6', 93: '+4, +5',
+  94: '+4', 95: '+3', 96: '+3', 97: '+3', 98: '+3', 99: '+3', 100: '+3',
+  101: '+3', 102: '+2', 103: '+3', 104: '+4', 105: '+5', 106: '+6', 107: '+7',
+  108: '+8',
+};
+
+/* ---------- descriptions ----------
+   written once, shown by the periodic-table detail sheet, the sandbox
+   element card and the compound notebook; every entry covers what the
+   element is, its properties, a real use and a memorable fact */
+
+const ELEMENT_DESC = {
+  H: 'The lightest element and the most abundant in the universe. It is a colourless, odourless gas that burns in air and escapes the Earth easily. Refineries, ammonia plants and fuel cells rely on it, and stars fuse it into helium.',
+  He: 'A colourless, odourless noble gas with the lowest boiling point of any element. It is completely inert, so it cools MRI magnets, shields welding arcs and lifts balloons. Helium was detected in the Sun before it was found on Earth.',
+  Li: 'A soft, silvery alkali metal that floats on water and reacts with it steadily. It powers rechargeable batteries and some medicines. Lithium is one of the few elements made in the Big Bang.',
+  Be: 'A pale, stiff and very light metal. It is transparent to X-rays and keeps its strength when hot, so it appears in aerospace parts and X-ray windows. Beryllium dust is severely toxic to the lungs.',
+  B: 'A hard, dark metalloid that conducts electricity poorly at room temperature. Boron strengthens borosilicate glass and helps plant cell walls. It also absorbs neutrons, so it is used in reactor control rods.',
+  C: 'A nonmetal that forms more compounds than any other element. Pure carbon appears as soft graphite, hard diamond and single-atom-thick graphene. It is the backbone of life and of fuels, plastics and steel.',
+  N: 'A colourless, mostly inert gas that makes up about four fifths of the air. Its strong triple bond must be broken to make fertiliser, which takes enormous energy. Nitrogen also colours the glow of lightning and neon signs.',
+  O: 'A colourless gas that makes up about a fifth of the air and most of the Earth crust by mass. It drives breathing, burning and rusting, and liquid oxygen fuels rockets. Ozone, a form with three atoms, shields us from ultraviolet light.',
+  F: 'A pale yellow-green gas and the most reactive element known. It attacks glass, water and almost every organic material, so it is handled with special equipment. Fluoride strengthens tooth enamel and appears in non-stick coatings.',
+  Ne: 'A colourless noble gas that glows orange-red in an electric discharge. It is inert and rare in the air, so it is used in signs and high-voltage indicators. The familiar red-orange glow is the element itself, not a phosphor.',
+  Na: 'A soft, silvery metal that reacts violently with water and must be stored in oil. It is half of table salt and a key ion in nerves and batteries. Sodium street lamps give the familiar warm orange glow.',
+  Mg: 'A light, silvery metal that burns with a brilliant white flame. It is used in lightweight alloys, fireworks and flares, and it sits at the centre of chlorophyll. Magnesium is essential to hundreds of enzymes.',
+  Al: 'The most abundant metal in the Earth crust. It is light, strong and naturally protected by a thin oxide film that stops further corrosion. Aluminium cans, aircraft and power lines all depend on it.',
+  Si: 'A hard, brittle metalloid and the second most abundant element in the crust. It is the substrate of computer chips and solar cells, and its oxide is ordinary sand. Silicon also forms the mineral skeletons of many sea creatures.',
+  P: 'A reactive nonmetal that exists in several forms. White phosphorus glows in air and burns fiercely, while red phosphorus is safer and used in matchboxes. Phosphorus is essential in DNA, bones and fertiliser.',
+  S: 'A yellow, brittle nonmetal found near volcanoes and in underground deposits. It burns with a blue flame and is used to make sulfuric acid and to vulcanise rubber. Sulfur compounds give garlic and rotten eggs their smell.',
+  Cl: 'A green-yellow gas with a choking smell and strong oxidising power. It disinfects drinking water, bleaches paper and makes many plastics. Chlorine is a halogen and forms chloride salts with most metals.',
+  Ar: 'The most abundant noble gas in the air. It is colourless, odourless and completely inert, so it fills light bulbs and shields welding arcs. Argon also helps preserve historic documents in sealed cases.',
+  K: 'A soft, silvery alkali metal that catches fire in water. It is essential for nerve signals and muscle contraction, and it is a major component of fertiliser. Bananas are famous, if modest, sources of potassium.',
+  Ca: 'A soft, reactive silvery metal that is never found free in nature. It builds bones, shells and cement, and calcium ions control muscle contraction and blood clotting. It is the fifth most abundant element in the Earth crust.',
+  Sc: 'A light, silvery transition metal that is more abundant on the Moon than on Earth. It strengthens aluminium alloys for aircraft and gives bright light in metal-halide lamps. Scandium was named after Scandinavia.',
+  Ti: 'A strong, light and corrosion-resistant metal. Its oxide is inert and biocompatible, so it is used in implants, paint pigments and sunscreen. Titanium is also the ninth most abundant element in the crust.',
+  V: 'A hard, silvery transition metal named after the goddess Vanadis. A little vanadium toughens steel and spring steel, and vanadium compounds catalyse sulfuric acid production. Some sea creatures concentrate vanadium in their blood.',
+  Cr: 'A shiny, hard transition metal that gives stainless steel its rust resistance. Chromium plating decorates bumpers and taps, and chromium salts produce vivid green and yellow pigments. Some chromium compounds are toxic and carcinogenic.',
+  Mn: 'A hard, brittle transition metal that is essential in steelmaking. It also sits in the oxygen-evolving complex of plants, where it splits water. Manganese nodules cover parts of the deep ocean floor.',
+  Fe: 'A silvery transition metal and the main component of the Earth core. Iron carries oxygen in haemoglobin, forms steel, and has been worked by people for thousands of years. Its rust is a familiar sign of oxidation.',
+  Co: 'A hard, magnetic transition metal that has coloured glass blue since antiquity. It binds vitamin B12 and strengthens superalloys in jet engines. Cobalt is also a key ingredient in many lithium-ion battery cathodes.',
+  Ni: 'A silvery, corrosion-resistant transition metal. It plates other metals, hardens stainless steel and appears in rechargeable batteries. Nickel is unusually common in iron meteorites.',
+  Cu: 'A reddish transition metal and one of the first metals worked by humans. It conducts electricity and heat extraordinarily well, so it wires buildings and motors. Copper also kills many microbes on contact.',
+  Zn: 'A bluish-white metal that oxidises readily and thereby protects steel as a sacrificial coating. It is essential to many enzymes and to wound healing. Zinc oxide is a common sunscreen and white pigment.',
+  Ga: 'A soft, silvery metal that melts just above room temperature, so it can turn liquid in your hand. Its nitride makes blue LEDs and its arsenide powers high-speed electronics. Gallium is not found free in nature.',
+  Ge: 'A brittle metalloid that made the first transistors. It is now used in fibre-optic cables and infrared optics, where it guides light efficiently. Germanium was predicted by Mendeleev before it was discovered.',
+  As: 'A metalloid famous as a poison and also used as a semiconductor dopant. Arsenic compounds once treated syphilis and still appear in some wood preservatives. In groundwater it is a serious health hazard in several countries.',
+  Se: 'A nonmetal that is light-sensitive and conducts electricity better in light than in darkness. It was used in photocopiers and is now a trace nutrient. Selenium compounds give garlic a distinctive smell.',
+  Br: 'A deep red-brown liquid and one of only two elements liquid at room temperature. Its vapour is corrosive and toxic, but bromine compounds are used in flame retardants and some medicines. It is a halogen, like chlorine and iodine.',
+  Kr: 'A colourless noble gas that is heavier than air. It fills high-performance windows and excimer lasers, and it was once used in photographic flashes. Krypton is rare but can be extracted from liquid air.',
+  Rb: 'A soft, silvery alkali metal that ignites in air and reacts explosively with water. It is used in atomic clocks and in some electronics. Rubidium was discovered from the red lines in its spectrum.',
+  Sr: 'A soft, silvery alkaline earth metal. It gives fireworks their brilliant red colour and follows calcium into bones. Strontium-90, a fission product, is a dangerous radioactive contaminant.',
+  Y: 'A silvery transition metal that is often grouped with the rare earths. It hosts laser crystals and phosphors in white LEDs and screens. Yttrium was named after the Swedish village of Ytterby, a source of several elements.',
+  Zr: 'A strong, corrosion-resistant transition metal that tolerates reactor neutrons. It clads nuclear fuel rods and makes tough ceramics. Cubic zirconia, a zirconium oxide, is a common diamond substitute.',
+  Nb: 'A soft, grey transition metal that becomes superconducting at low temperatures. It makes powerful magnets for MRI and particle accelerators, and it strengthens pipeline steel. Niobium was once confused with tantalum.',
+  Mo: 'A hard, silvery transition metal with a very high melting point. It strengthens steel, lubricates machinery as molybdenum disulfide, and sits in nitrogen-fixing enzymes. Molybdenum is essential to life in tiny amounts.',
+  Tc: 'A silvery radioactive transition metal with no stable isotopes. It was the first element made artificially, and its gamma-emitting isotope is used in medical scans. Technetium is also a fission product in spent nuclear fuel.',
+  Ru: 'A hard, silvery platinum-group metal that resists corrosion. It hardens electrical contacts, catalyses industrial reactions and appears in some solar cells. Ruthenium was named after Russia.',
+  Rh: 'A silvery-white, extremely corrosion-resistant platinum-group metal. It is a key catalyst in car exhaust systems and in chemical plants. Rhodium is often the most expensive precious metal by weight.',
+  Pd: 'A soft, silvery platinum-group metal that absorbs large volumes of hydrogen. It catalyses exhaust cleanup and many organic reactions, and it is used in jewellery. Palladium was named after the asteroid Pallas.',
+  Ag: 'A bright, soft transition metal and the best electrical and thermal conductor of all. It is used in jewellery, mirrors, solar cells and antibacterial coatings. Silver tarnishes by reacting with sulfur compounds in the air.',
+  Cd: 'A soft, bluish-white toxic metal. It once appeared in cheap batteries and pigments, but its use is restricted because it damages kidneys and bones. Cadmium also absorbs neutrons in reactor control rods.',
+  In: 'A very soft, silvery metal that can be cut with a knife. Its oxide conducts electricity while remaining transparent, so it drives touchscreens and flat displays. Indium is rare and mostly recovered as a by-product of zinc refining.',
+  Sn: 'A soft, silvery metal that has been alloyed with copper to make bronze for millennia. It plates steel cans and forms low-melting solders. Tin can undergo tin pest, a slow crumbling at low temperatures.',
+  Sb: 'A brittle, silvery metalloid once used as an eye cosmetic in ancient Egypt. It strengthens lead alloys and acts as a flame retardant. Antimony compounds are toxic, and its name comes from the Greek for not alone.',
+  Te: 'A rare, silvery-white metalloid that is a semiconductor. It is used in thin-film solar cells and rewritable optical discs. Tellurium compounds can give the breath a persistent garlic odour.',
+  I: 'A shiny, dark purple nonmetal that sublimes into a violet vapour. It is essential for thyroid hormones and is used as an antiseptic and in photography. Iodine is the heaviest halogen that is essential to life.',
+  Xe: 'A heavy, colourless noble gas that can form compounds under special conditions. It fills ion thrusters for spacecraft and high-intensity lamps, and it was once used as an anaesthetic. Xenon is extracted from liquid air.',
+  Cs: 'A soft, golden alkali metal that melts just above room temperature and explodes in water. It defines the second in atomic clocks and is used in oil drilling fluids. Caesium was named for the blue lines in its spectrum.',
+  Ba: 'A soft, silvery alkaline earth metal that reacts with water. Barium sulfate is swallowed as a contrast agent for X-rays because it is insoluble, while soluble barium salts are toxic. Barium also gives fireworks a green colour.',
+  La: 'A soft, silvery lanthanide that opens the rare-earth series. It is used in camera lenses, hydrogen storage alloys and nickel-metal-hydride batteries. Lanthanum means hidden, because it was hard to isolate.',
+  Ce: 'A soft, grey lanthanide and the most abundant rare-earth element. It polishes glass, scrubs exhaust gases and sparks in lighter flints. Cerium can switch between two oxidation states, which makes it useful as a catalyst.',
+  Pr: 'A soft, silvery lanthanide that colours welder goggles and glass a yellow-green. It strengthens permanent magnets and is used in some aircraft engine alloys. Praseodymium takes its name from the Greek for leek-green twin.',
+  Nd: 'A silvery lanthanide that makes the strongest permanent magnets available. Neodymium magnets drive speakers, hard drives and electric motors. It also colours glass violet and is used in lasers.',
+  Pm: 'A radioactive lanthanide with no stable isotope. It was once used in luminous dials and is now studied for nuclear batteries. Promethium is named after the Titan who stole fire.',
+  Sm: 'A silvery lanthanide that forms magnets able to work at high temperatures. Samarium-cobalt magnets appear in aerospace and military equipment. It also absorbs neutrons and is used in reactor control rods.',
+  Eu: 'A silvery lanthanide that provides the red glow in many screens and fluorescent lamps. It is also used in euro banknote security inks and in some safety testing. Europium was named after the continent of Europe.',
+  Gd: 'A silvery lanthanide with strong magnetic properties. Gadolinium compounds sharpen MRI images and absorb neutrons in reactors. It was named after the chemist Johan Gadolin.',
+  Tb: 'A soft, silvery lanthanide that gives a green glow to phosphors. It is used in solid-state devices and in magnetostrictive alloys that change shape in a magnetic field. Terbium was named after Ytterby, Sweden.',
+  Dy: 'A silvery lanthanide that keeps magnets working at high temperatures. It is added to neodymium magnets for electric vehicles and wind turbines. Dysprosium means hard to get, after its difficult isolation.',
+  Ho: 'A soft, silvery lanthanide with one of the highest magnetic moments of any element. It is used in surgical lasers and in strong magnetic field research. Holmium was named after Stockholm.',
+  Er: 'A silvery lanthanide that amplifies light in optical fibres. Erbium-doped amplifiers keep internet signals strong across oceans. It also gives glass a pink colour and is used in some lasers.',
+  Tm: 'The least abundant stable rare-earth element. It is used in portable X-ray sources and in some lasers. Thulium was named after Thule, the ancient name for the far north.',
+  Yb: 'A soft, silvery lanthanide that is used in ultra-precise atomic clocks. It also strengthens stainless steel and appears in some lasers. Ytterbium was named after Ytterby, Sweden.',
+  Lu: 'The densest and hardest lanthanide. It is used in PET scanner detectors and as a catalyst support. Lutetium was named after Paris, the city of its discoverer.',
+  Hf: 'A shiny, corrosion-resistant transition metal that is chemically similar to zirconium. It is used in nuclear control rods and as a high-k dielectric in computer chips. Hafnium was named after Copenhagen.',
+  Ta: 'A hard, blue-grey transition metal that resists acids and body fluids. It makes tiny capacitors in phones and inert surgical implants. Tantalum was named after the mythological Tantalus.',
+  W: 'A hard, steel-grey transition metal with the highest melting point of all metals. It made the filaments of old light bulbs and is used in cutting tools and armour-piercing rounds. Tungsten means heavy stone in Swedish.',
+  Re: 'A rare, dense transition metal that keeps its strength at extreme temperatures. It is used in jet engine turbine blades and in high-temperature thermocouples. Rhenium was the last stable element to be discovered.',
+  Os: 'A very dense, hard transition metal in the platinum group. It is used in fountain pen tips and electrical contacts, and its oxide is extremely toxic. Osmium is the densest naturally occurring element.',
+  Ir: 'A hard, brittle and extremely corrosion-resistant platinum-group metal. It is used in spark plugs and crucibles, and its layer in rocks marks the impact that ended the dinosaurs. Iridium is one of the rarest elements in the crust.',
+  Pt: 'A dense, unreactive platinum-group metal. It is a superb catalyst in car exhausts and chemical plants, and it is used in jewellery and electrodes. Platinum is so unreactive that it resists most acids.',
+  Au: 'A dense, soft, yellow transition metal that does not tarnish. It has been used for money, jewellery and dentistry for millennia, and it is a reliable electrical contact. Gold is forged in supernova explosions and neutron-star collisions.',
+  Hg: 'The only metal that is liquid at room temperature. Its vapour is toxic to nerves and kidneys, so its use in thermometers and lamps is fading. Mercury forms amalgams with many metals, including gold.',
+  Tl: 'A soft, grey post-transition metal that is highly toxic and odourless. It was once used as a rat poison and is now restricted. Thallium compounds are used in some infrared detectors and low-melting glasses.',
+  Pb: 'A soft, dense, bluish-grey metal that is easy to shape. It shields against radiation, forms electrodes in old batteries and was once common in pipes and paint. Lead poisoning damages the brain, especially in children.',
+  Bi: 'A brittle, pinkish-white post-transition metal and the heaviest nearly stable element. It forms colourful staircase crystals and is used as a harmless substitute for lead in shot and solder. Bismuth is also used in stomach medicines.',
+  Po: 'A rare, radioactive post-transition metal discovered by Marie and Pierre Curie. It is intensely radioactive and glows blue in the dark, and it has been used in anti-static brushes. Polonium is highly toxic if ingested or inhaled.',
+  At: 'The rarest naturally occurring element, with only a few grams present in the Earth crust at any time. It is a radioactive halogen with poorly known properties. Astatine is studied for targeted cancer therapy.',
+  Rn: 'A colourless, radioactive noble gas that seeps from soil and rock into buildings. It decays into solid radioactive particles that can damage lungs, making radon a leading cause of lung cancer. Radon is also used in some geological surveys.',
+  Fr: 'A highly radioactive alkali metal that exists only in fleeting traces. It is the least stable of the first 101 elements and has never been isolated in bulk. Francium was discovered by Marguerite Perey and named after France.',
+  Ra: 'A silvery-white radioactive alkaline earth metal. It was once used in luminous paint, which fatally poisoned the radium dial painters. Radium is now used in some cancer treatments and research.',
+  Ac: 'A soft, silvery radioactive actinide that glows faintly blue in the dark. It is used in targeted alpha therapy for leukemia and as a neutron source. Actinium was named after the Greek word for ray.',
+  Th: 'A silvery, weakly radioactive actinide that is more abundant than uranium. It was once used in gas mantles and is studied as a safer nuclear fuel. Thorium was named after Thor, the Norse god of thunder.',
+  Pa: 'A rare, highly radioactive actinide that is extracted from uranium ore. It is a step in the uranium decay chain and has little practical use. Protactinium was named because it is the parent of actinium.',
+  U: 'A dense, silvery, radioactive actinide. Its fissile isotope U-235 powers nuclear reactors and weapons, and depleted uranium is used in dense shielding and armour. Uranium was once used to colour glass yellow-green.',
+  Np: 'A radioactive actinide and the first transuranic element made. It forms in reactors as a precursor to plutonium and is used in neutron detectors. Neptunium was named after the planet Neptune.',
+  Pu: 'A radioactive actinide that is warm to the touch because it decays steadily. It is used in nuclear weapons, reactor fuel and power sources for spacecraft. Plutonium is named after the dwarf planet Pluto.',
+  Am: 'A radioactive actinide that is used in household smoke detectors. Its alpha particles ionise air and trigger the alarm when smoke interrupts the current. Americium was named after the Americas.',
+  Cm: 'A radioactive actinide named after Marie and Pierre Curie. It powers instrument lamps on Mars rovers and is used as an alpha source. Curium glows purple-red because of its intense radioactivity.',
+  Bk: 'A radioactive actinide named after Berkeley, California. It is produced in research reactors in tiny amounts and is used mainly for scientific study. Berkelium was the first element named after a city.',
+  Cf: 'A radioactive actinide and a powerful neutron emitter. It starts nuclear reactor chains and probes oil wells, and it is used in cancer treatment research. Californium is one of the most expensive substances on Earth.',
+  Es: 'A radioactive actinide named after Albert Einstein. It was the last element produced in weighable amounts, and it is used only in research. Einsteinium was discovered in the debris of a hydrogen bomb test.',
+  Fm: 'A highly radioactive actinide named after Enrico Fermi. It was discovered in hydrogen-bomb debris and has no practical use outside research. Fermium is the heaviest element that can be made by neutron capture.',
+  Md: 'A radioactive actinide named after Dmitri Mendeleev. It is made one atom at a time and studied only in research laboratories. Mendelevium was the first element made and identified one atom at a time.',
+  No: 'A radioactive actinide named after Alfred Nobel. It is produced in tiny amounts and has no commercial use. The credit for discovering nobelium was disputed between Swedish and American teams for years.',
+  Lr: 'A radioactive actinide that closes the actinide series. It is made atom by atom and its chemistry is barely understood. Lawrencium was named after Ernest Lawrence, inventor of the cyclotron.',
+  Rf: 'A highly radioactive synthetic transition metal and a heavier relative of zirconium. It is made in particle accelerators and survives for only minutes or seconds. Rutherfordium was named after Ernest Rutherford.',
+  Db: 'A highly radioactive synthetic transition metal in group 5. It is made atom by atom and its chemistry is studied with single atoms. Dubnium was named after the Russian research city of Dubna.',
+  Sg: 'A highly radioactive synthetic transition metal in group 6. It behaves chemically like tungsten in the few experiments possible. Seaborgium was named after Glenn Seaborg while he was still alive.',
+  Bh: 'A highly radioactive synthetic transition metal in group 7. It decays within seconds and has never been seen in bulk. Bohrium was named after Niels Bohr.',
+  Hs: 'A highly radioactive synthetic transition metal in group 8. It forms a volatile oxide similar to osmium, which helped confirm its chemistry. Hassium was named after the German state of Hesse.',
+  Mt: 'A highly radioactive synthetic element in group 9. It has been produced only in tiny numbers and has no practical use. Meitnerium was named after Lise Meitner, co-discoverer of nuclear fission.',
+  Ds: 'A highly radioactive synthetic element in group 10. Only a handful of atoms have ever been made, so its chemistry is mostly predicted. Darmstadtium was named after the German city of Darmstadt.',
+  Rg: 'A highly radioactive synthetic element in group 11. It is made one atom at a time in particle accelerators. Roentgenium was named after Wilhelm Roentgen, who discovered X-rays.',
+  Cn: 'A highly radioactive synthetic element in group 12. Relativistic effects may make it a volatile liquid, unlike its lighter relatives. Copernicium was named after the astronomer Nicolaus Copernicus.',
+  Nh: 'A highly radioactive synthetic element in group 13. It is made through nuclear collisions and decays almost immediately. Nihonium was the first element named in Japan.',
+  Fl: 'A highly radioactive synthetic element in group 14. Its chemistry may drift toward noble-gas behaviour because of relativistic effects. Flerovium was named after the Flerov Laboratory of Nuclear Reactions.',
+  Mc: 'A highly radioactive synthetic element in group 15. It decays in a fraction of a second and has no practical use. Moscovium was named after the Moscow region.',
+  Lv: 'A highly radioactive synthetic element in group 16. It is made in accelerators and studied only by its decay products. Livermorium was named after the Lawrence Livermore National Laboratory.',
+  Ts: 'A highly radioactive synthetic element in group 17. Computer models suggest it may be more metallic than the halogens above it. Tennessine was named after the US state of Tennessee.',
+  Og: 'A highly radioactive synthetic element in group 18. Calculations suggest it may be a solid rather than a gas at room temperature. Oganesson was named after the physicist Yuri Oganessian.',
+};
+
+/* enrich every tuple in place: [.., note, description, state, oxidation] */
+ELEMENTS.forEach((el) => {
+  el[9] = ELEMENT_DESC[el[1]] || el[8];
+  el[10] = stateAt25(el[0]);
+  el[11] = OXIDATION[el[0]] || '—';
+});

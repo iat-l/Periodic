@@ -188,62 +188,26 @@ pullButton.addEventListener('keydown', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
 
-  if (drawerOpen()) { closeDrawer(); return; }
+  /* the tour owns Escape while it is up, so one press cannot dismiss two layers */
+  if (window.scilampTutorialOpen) return;
 
   if (detail.classList.contains('is-open')) { closeDetail(); return; }
+
+  if (drawerOpen()) { closeDrawer(); return; }
+
+  if (window.scilampSandboxOpen) {
+    if (window.scilampCloseSandbox) window.scilampCloseSandbox();
+    return;
+  }
 
   const open = document.querySelector('.page.is-open');
   if (open) {
     const key = open.id.slice('page-'.length);
-    const { x, y } = cardCentre(document.querySelector(`[data-page="${key}"]`));
+    const { x, y } = pageOrigin();
     closePage(key, x, y);
     return;
   }
   if (isLit()) turnOff();
-});
-
-/* ---------- the card: tilts to the pointer, opens its page ---------- */
-
-const MAX_TILT = 9;
-
-document.querySelectorAll('.card').forEach((card) => {
-  const tilt = card.querySelector('.card-tilt');
-
-  const setTilt = (ms) => {
-    tilt.style.transition = `transform ${ms}ms var(--ease)`;
-  };
-
-  card.addEventListener('pointermove', (event) => {
-    if (reducedMotion || event.pointerType === 'touch') return;
-
-    const box = card.getBoundingClientRect();
-    const px = (event.clientX - box.left) / box.width;
-    const py = (event.clientY - box.top) / box.height;
-
-    setTilt(90);
-    card.style.setProperty('--tx', `${(0.5 - py) * MAX_TILT * 2}deg`);
-    card.style.setProperty('--ty', `${(px - 0.5) * MAX_TILT * 2}deg`);
-    card.style.setProperty('--mx', `${px * 100}%`);
-    card.style.setProperty('--my', `${py * 100}%`);
-  });
-
-  card.addEventListener('pointerleave', () => {
-    setTilt(550);
-    card.style.setProperty('--tx', '0deg');
-    card.style.setProperty('--ty', '0deg');
-  });
-
-  card.addEventListener('click', (event) => {
-    openPage(card.dataset.page, event.clientX, event.clientY);
-  });
-
-  card.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.code === 'Space') {
-      event.preventDefault();
-      const { x, y } = cardCentre(card);
-      openPage(card.dataset.page, x, y);
-    }
-  });
 });
 
 /* ---------- periodic table page ---------- */
@@ -252,6 +216,7 @@ const REVEAL_MS = 640;
 const reveal = document.getElementById('reveal');
 let transitioning = false;
 let pendingMode = null;   /* a shape picked from the menu before the page exists */
+let pendingSandbox = false;   /* the sandbox was asked for from another page */
 
 const hud = {
   root: document.getElementById('hud'),
@@ -289,8 +254,6 @@ function scatter(cell, x, y) {
   cell.style.setProperty('--delay', `${(x + y) * 22}ms`);
 }
 
-const GASES = new Set([1, 2, 7, 8, 9, 10, 17, 18, 36, 54, 86]);
-const LIQUIDS = new Set([35, 80]);
 const SHELL_ORDER = { s: 0, p: 1, d: 2, f: 3 };
 
 /* noble cores in descending order, so the first hit is the heaviest core below Z */
@@ -376,6 +339,7 @@ function bohrSvg(sym, num, shells) {
 const detail = document.getElementById('detail');
 const zone = document.getElementById('detail-zone');
 const zoomer = document.getElementById('zoomer');
+const factsClose = document.getElementById('facts-close');
 const facts = {
   num: document.getElementById('zoom-num'),
   sym: document.getElementById('zoom-sym'),
@@ -383,28 +347,93 @@ const facts = {
   mass: document.getElementById('zoom-mass'),
   title: document.getElementById('facts-title'),
   sub: document.getElementById('facts-sub'),
+  desc: document.getElementById('facts-desc'),
   note: document.getElementById('facts-note'),
   list: document.getElementById('facts-list'),
   hazards: document.getElementById('facts-hazards'),
+  safetyH: document.getElementById('facts-safety-h'),
   bohr: document.getElementById('bohr'),
+  ext: document.getElementById('facts-ext'),
+  spectrum: document.getElementById('spectrum'),
+  actions: document.getElementById('facts-actions'),
 };
 
 const ZOOM_MS = 520;
 let activeCell = null;
 let zoomHome = 'none';
+let sheetMode = 'element';    /* element | created | detail | hint */
+let sheetProduct = null;
+let sheetReturnFocus = null;
+let sheetClosing = false;
 
-/* everything outside the dialog stops taking focus while it is up */
+/* the sheet sits above every page; everything behind it is made inert for as long
+   as it is up, and every part gets its previous value back on close.  The tutorial
+   is deliberately left alone so its controls keep working while a step shows a card. */
+const QUIET_PARTS = '.room, .page, .sandbox, .drawer, .menu-tab, .scrim, .reveal';
+let quietSaved = null;
+
 function silencePage(quiet) {
-  document.querySelectorAll('.page-bar, .table-scroll, .legend').forEach((part) => {
-    part.inert = quiet;
+  if (quiet) {
+    if (quietSaved) return;
+    quietSaved = [];
+    document.querySelectorAll(QUIET_PARTS).forEach((part) => {
+      quietSaved.push([part, part.inert]);
+      part.inert = true;
+    });
+    return;
+  }
+  if (!quietSaved) return;
+  quietSaved.forEach(([part, was]) => { part.inert = was; });
+  quietSaved = null;
+}
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+let detailNum = 0;
+
+function extRow(label, value) {
+  return value == null || value === '' ? '' : `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+}
+
+/* the fetched dataset paints the deeper facts in once it lands; the panel never waits for it */
+function paintExtended(num) {
+  loadExtended().then((map) => {
+    if (detailNum !== num || sheetMode !== 'element') return;
+    const x = map ? map.get(num) : null;
+
+    facts.ext.innerHTML = [
+      extRow('Electron configuration', x && x.config ? esc(x.config).replace(/(\d+)/g, '<sup>$1</sup>') : null),
+      extRow('Density', x && x.density != null ? `${x.density} g/cm³` : null),
+      extRow('Melting point', x && x.melt != null ? `${Math.round(x.melt)} K` : null),
+      extRow('Boiling point', x && x.boil != null ? `${Math.round(x.boil)} K` : null),
+      extRow('Electronegativity', x && x.en != null ? `${x.en} (Pauling)` : null),
+      extRow('First ionisation', x && x.ie1 != null ? `${Math.round(x.ie1)} kJ/mol` : null),
+      extRow('Oxidation states', OXIDATION[num] || null),
+      extRow('Discovery', x && x.discovered ? esc(x.discovered) : null),
+    ].join('');
+
+    facts.spectrum.hidden = true;
+    facts.spectrum.innerHTML = '';
+    if (x && x.spectral && x.spectral.includes('File:')) {
+      const file = x.spectral.slice(x.spectral.indexOf('File:') + 5);
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.alt = `Emission spectrum of ${ELEMENTS[num - 1][2]}`;
+      img.src = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=480`;
+      const cap = document.createElement('figcaption');
+      cap.textContent = 'Emission spectrum (Wikimedia Commons)';
+      img.addEventListener('error', () => { facts.spectrum.hidden = true; });
+      facts.spectrum.append(img, cap);
+      facts.spectrum.hidden = false;
+    }
   });
 }
 
 function fillPanel(el) {
-  const [num, sym, name, cat, x, y, mass, codes, note] = el;
+  const [num, sym, name, cat, x, y, mass, codes, note, description, state] = el;
   const main = y <= 7;
   const { notation, shells } = electronArrangement(num);
-  const state = GASES.has(num) ? 'gas' : LIQUIDS.has(num) ? 'liquid' : 'solid';
+  const phase = state || stateAt25(num);
 
   detail.dataset.cat = cat;
   facts.num.textContent = num;
@@ -413,14 +442,21 @@ function fillPanel(el) {
   facts.mass.textContent = `${mass} u`;
 
   facts.title.textContent = `${sym} — ${name}`;
-  facts.sub.textContent = `${CATEGORIES[cat]} · ${main ? `group ${x}` : 'f-block'} · period ${main ? y : y - 3} · ${state} at 25 °C`;
-  facts.note.textContent = note;
+  facts.sub.textContent = `${CATEGORIES[cat]} · ${main ? `group ${x}` : 'f-block'} · period ${main ? y : y - 3} · ${phase} at 25 °C`;
+  facts.desc.textContent = description || note;
+  facts.note.hidden = true;
+  facts.note.textContent = '';
+  facts.safetyH.hidden = false;
+  facts.bohr.hidden = false;
+  facts.actions.hidden = true;
+  facts.actions.innerHTML = '';
 
   facts.list.innerHTML = `
     <div><dt>Atomic number</dt><dd>${num}</dd></div>
     <div><dt>Relative atomic mass</dt><dd>${mass}${mass.startsWith('[') ? ' <span class="fact-hint">most stable isotope</span>' : ' <span class="fact-hint">u</span>'}</dd></div>
     <div><dt>Electron arrangement</dt><dd>${notation}</dd></div>
-    <div><dt>Shells</dt><dd>${shells.join(' · ')}</dd></div>`;
+    <div><dt>Shells</dt><dd>${shells.join(' · ')}</dd></div>
+    <div><dt>Common oxidation states</dt><dd>${el[11] || '—'}</dd></div>`;
 
   const list = codes ? codes.split(' ') : [];
   const tags = list.length ? list : ['none'];
@@ -431,6 +467,12 @@ function fillPanel(el) {
   )).join('');
 
   facts.bohr.innerHTML = `${bohrSvg(sym, num, shells)}<figcaption>Bohr model — electrons per shell from the ground state</figcaption>`;
+
+  detailNum = num;
+  facts.ext.innerHTML = '';
+  facts.spectrum.hidden = true;
+  facts.spectrum.innerHTML = '';
+  paintExtended(num);
 }
 
 /* FLIP: the tile is drawn where it already sits, then released into the left half */
@@ -452,42 +494,280 @@ function growFrom(cell) {
   zoomer.style.transform = 'none';
 }
 
+const factsPane = detail.querySelector('.facts');
+
+/* every visible button in the sheet, in document order, for the Tab loop */
+function sheetFocusables() {
+  return [...detail.querySelectorAll('button, [href], input, select, textarea, [tabindex]')]
+    .filter((el) => el.tabIndex !== -1 && !el.disabled && !el.hidden && el.getClientRects().length);
+}
+
 function openDetail(cell, el) {
   activeCell = cell;
+  sheetMode = 'element';
+  sheetProduct = null;
+  sheetReturnFocus = cell;
   fillPanel(el);
   cell.classList.add('is-source');
   silencePage(true);
 
+  detail.dataset.mode = 'element';
   detail.classList.add('is-open');
   detail.removeAttribute('aria-hidden');
   growFrom(cell);
 
   requestAnimationFrame(() => detail.classList.add('in'));
-  setTimeout(() => document.getElementById('facts-close').focus(), reducedMotion ? 0 : ZOOM_MS);
+  setTimeout(() => {
+    if (!window.scilampTutorialOpen) factsClose.focus({ preventScroll: true });
+  }, reducedMotion ? 0 : ZOOM_MS);
+}
+
+const elementName = (sym) => {
+  const row = ELEMENTS.find((e) => e[1] === sym);
+  return row ? row[2] : sym;
+};
+
+const productKind = (product) => (
+  product.diatomic ? 'Diatomic element' : SB.KIND_LABEL[product.kind] || 'Compound'
+);
+
+function fillProductSheet(product, mode) {
+  const kind = productKind(product);
+  const molar = compoundMass(product);
+  detail.dataset.mode = mode;
+  detail.dataset.cat = product.kind === 'alloy' ? 'p' : 'compound';
+
+  facts.num.textContent = product.units > 1 ? `${product.units} ×` : '';
+  facts.sym.textContent = product.formula;
+  facts.name.textContent = product.name;
+  facts.mass.textContent = molar ? `${molar} u per formula unit` : 'variable composition';
+
+  facts.title.textContent = `${product.formula} — ${product.name}`;
+  const bits = [kind];
+  if (product.ratio) bits.push(SB.ratioText(product.ratio));
+  if (product.units > 1) bits.push(`${product.units} formula units`);
+  facts.sub.textContent = bits.join(' · ');
+
+  facts.desc.textContent = mode === 'created' ? (product.why || product.description) : (product.description || product.why);
+  facts.note.hidden = false;
+  facts.note.textContent = mode === 'created'
+    ? (product.formation || '')
+    : [product.why, product.formation].filter(Boolean).join(' ');
+
+  const rows = [
+    `<div><dt>Compound type</dt><dd>${kind}</dd></div>`,
+    `<div><dt>Composition</dt><dd>${esc(product.compositionText || '')}</dd></div>`,
+    `<div><dt>Molar mass</dt><dd>${molar ? `${molar} u` : 'Variable — an alloy has no fixed formula'}</dd></div>`,
+  ];
+  if (product.ratio) rows.push(`<div><dt>Ion ratio</dt><dd>${SB.ratioText(product.ratio)}</dd></div>`);
+  rows.push(`<div><dt>How it forms</dt><dd>${esc(product.formation || '')}</dd></div>`);
+  rows.push(`<div><dt>Properties</dt><dd>${esc(product.properties || '')}</dd></div>`);
+  rows.push(`<div><dt>Elements</dt><dd>${product.contains.map((s) => `${s} <span class="fact-hint">${elementName(s)}</span>`).join(', ')}</dd></div>`);
+  if (product.suppliedText) rows.push(`<div><dt>On the bench</dt><dd>${esc(product.suppliedText)}</dd></div>`);
+  facts.list.innerHTML = rows.join('');
+
+  facts.ext.innerHTML = '';
+  facts.spectrum.hidden = true;
+  facts.spectrum.innerHTML = '';
+  facts.hazards.innerHTML = '';
+  facts.safetyH.hidden = true;
+  facts.bohr.hidden = true;
+  facts.bohr.innerHTML = '';
+
+  const saved = window.SciLampStore && SciLampStore.hasProduct(product.key);
+  facts.actions.hidden = false;
+  if (mode === 'created') {
+    facts.actions.innerHTML = `
+      <span class="sheet-saved"><span aria-hidden="true">✓</span> Saved to my products</span>
+      <button class="sheet-btn" type="button" data-sheet-action="details">full details</button>
+      <button class="sheet-btn" type="button" data-sheet-action="shelf">my products</button>
+      <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
+  } else {
+    facts.actions.innerHTML = `
+      <button class="sheet-btn" type="button" data-sheet-action="sandbox">open the sandbox</button>
+      ${saved ? '<button class="sheet-btn is-danger" type="button" data-sheet-action="remove">remove from my products</button>' : ''}
+      <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
+  }
+}
+
+function fillHintSheet(compound) {
+  const atoms = compound.atoms || {};
+  const syms = Object.keys(atoms);
+  const total = syms.reduce((sum, s) => sum + atoms[s], 0);
+  const metalCount = compound.metals ? compound.metals.length : 0;
+  const kind = compound.kind === 'alloy' ? 'Alloy' : SB.KIND_LABEL[compound.kind] || 'Compound';
+
+  detail.dataset.mode = 'hint';
+  detail.dataset.cat = 'hint';
+
+  facts.num.textContent = '?';
+  facts.sym.textContent = '???';
+  facts.name.textContent = 'Undiscovered compound';
+  facts.mass.textContent = 'identity hidden';
+
+  facts.title.textContent = `Unknown ${kind.toLowerCase()}`;
+  facts.sub.textContent = metalCount
+    ? `${kind} · ${metalCount} metals · variable ratio`
+    : `${kind} · ${total} atoms · ${syms.length} element${syms.length === 1 ? '' : 's'}`;
+  facts.desc.textContent = 'This compound stays hidden until the bench makes it. Discover it in the sandbox and its name and formula appear here.';
+  facts.note.hidden = false;
+  facts.note.textContent = `Hint: ${compound.hint}`;
+
+  facts.list.innerHTML = `
+    <div><dt>Compound type</dt><dd>${kind}</dd></div>
+    <div><dt>Atoms in formula</dt><dd>${metalCount ? 'variable' : total}</dd></div>
+    <div><dt>Elements involved</dt><dd>${metalCount || syms.length}</dd></div>`;
+
+  facts.ext.innerHTML = '';
+  facts.spectrum.hidden = true;
+  facts.spectrum.innerHTML = '';
+  facts.hazards.innerHTML = '';
+  facts.safetyH.hidden = true;
+  facts.bohr.hidden = true;
+  facts.bohr.innerHTML = '';
+
+  facts.actions.hidden = false;
+  facts.actions.innerHTML = `
+    <button class="sheet-btn" type="button" data-sheet-action="sandbox">open the sandbox</button>
+    <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
+}
+
+function beginSheet(mode, trigger) {
+  sheetMode = mode;
+  sheetReturnFocus = trigger || (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  silencePage(true);
+  detail.classList.add('is-open');
+  detail.removeAttribute('aria-hidden');
+  requestAnimationFrame(() => detail.classList.add('in'));
+  setTimeout(() => {
+    if (!window.scilampTutorialOpen && detail.classList.contains('is-open')) factsClose.focus({ preventScroll: true });
+  }, reducedMotion ? 0 : 260);
+}
+
+function openProduct(product, { mode = 'detail', trigger = null } = {}) {
+  if (!product) return;
+  const nextMode = mode === 'created' ? 'created' : 'detail';
+  activeCell = null;
+  sheetProduct = product;
+  fillProductSheet(product, nextMode);
+
+  if (detail.classList.contains('is-open')) {
+    sheetMode = nextMode;
+    factsPane.scrollTop = 0;
+    factsClose.focus({ preventScroll: true });
+    return;
+  }
+
+  zoomer.style.transition = 'none';
+  zoomer.style.transform = 'none';
+  zoomHome = 'none';
+  beginSheet(nextMode, trigger);
+}
+
+function openHint(compound, { trigger = null } = {}) {
+  if (!compound) return;
+  activeCell = null;
+  sheetProduct = null;
+  fillHintSheet(compound);
+
+  if (detail.classList.contains('is-open')) {
+    sheetMode = 'hint';
+    factsPane.scrollTop = 0;
+    factsClose.focus({ preventScroll: true });
+    return;
+  }
+
+  zoomer.style.transition = 'none';
+  zoomer.style.transform = 'none';
+  zoomHome = 'none';
+  beginSheet('hint', trigger);
+}
+
+function openElement(which) {
+  const num = typeof which === 'number' ? which : null;
+  const cell = num != null
+    ? document.querySelector(`.el[data-number="${num}"]`)
+    : [...document.querySelectorAll('.el')][ELEMENTS.findIndex((e) => e[1] === which)];
+  const el = num != null ? ELEMENTS[num - 1] : ELEMENTS.find((e) => e[1] === which);
+  if (!cell || !el) return;
+  openDetail(cell, el);
 }
 
 function closeDetail() {
+  if (!detail.classList.contains('is-open') || sheetClosing) return;
+  sheetClosing = true;
   detail.classList.remove('in');
 
+  const mode = sheetMode;
+  const back = sheetReturnFocus;
   const done = () => {
     detail.classList.remove('is-open');
     detail.setAttribute('aria-hidden', 'true');
     silencePage(false);
-    if (activeCell) {
-      activeCell.classList.remove('is-source');
-      activeCell.focus();
-      activeCell = null;
-    }
+    if (activeCell) activeCell.classList.remove('is-source');
+    if (detail.contains(document.activeElement)) document.activeElement.blur();
+
+    activeCell = null;
+    sheetProduct = null;
+    sheetReturnFocus = null;
+    sheetMode = 'element';
+    sheetClosing = false;
     zoomer.style.transition = 'none';
     zoomer.style.transform = 'none';
+    zoomHome = 'none';
+
+    if (window.scilampTutorialOpen) return;
+    if (back && document.contains(back) && back.getClientRects().length) {
+      back.focus({ preventScroll: true });
+    } else {
+      menuTab.focus({ preventScroll: true });
+    }
   };
 
   if (reducedMotion) { done(); return; }
 
-  zoomer.style.transition = `transform ${ZOOM_MS}ms var(--ease)`;
+  const ms = mode === 'element' ? ZOOM_MS : 300;
+  zoomer.style.transition = `transform ${ms}ms var(--ease)`;
   zoomer.style.transform = zoomHome;
-  setTimeout(done, ZOOM_MS);
+  setTimeout(done, ms);
 }
+
+facts.actions.addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-sheet-action]');
+  if (!btn) return;
+  const action = btn.dataset.sheetAction;
+
+  if (action === 'close') { closeDetail(); return; }
+
+  if (action === 'details' && sheetProduct) {
+    fillProductSheet(sheetProduct, 'detail');
+    factsPane.scrollTop = 0;
+    factsClose.focus({ preventScroll: true });
+    return;
+  }
+
+  if (action === 'remove' && sheetProduct) {
+    if (window.SciLampStore) SciLampStore.removeProduct(sheetProduct.key);
+    fillProductSheet(sheetProduct, 'detail');
+    const status = document.createElement('span');
+    status.className = 'sheet-saved is-removed';
+    status.textContent = 'Removed from my products';
+    facts.actions.prepend(status);
+    factsClose.focus({ preventScroll: true });
+    return;
+  }
+
+  if (action === 'shelf') {
+    closeDetail();
+    if (window.SciLampNav) SciLampNav.openSandbox({ shelf: true });
+    return;
+  }
+
+  if (action === 'sandbox') {
+    closeDetail();
+    if (window.SciLampNav) SciLampNav.openSandbox();
+  }
+});
 
 function buildTable() {
   const frag = document.createDocumentFragment();
@@ -497,6 +777,7 @@ function buildTable() {
     const cell = document.createElement('div');
     cell.className = 'el';
     cell.dataset.cat = cat;
+    cell.dataset.number = num;
     cell.style.setProperty('--x', x);
     cell.style.setProperty('--y', y);
     scatter(cell, x, y);
@@ -530,10 +811,18 @@ function buildTable() {
   document.getElementById('table').append(frag);
 
   Object.entries(CATEGORIES).forEach(([key, label]) => {
-    const item = document.createElement('span');
+    const item = document.createElement('button');
+    item.type = 'button';
     item.className = 'legend-item';
     item.dataset.cat = key;
+    item.setAttribute('aria-pressed', 'false');
     item.innerHTML = `<span class="legend-dot"></span>${label}`;
+    item.addEventListener('click', () => {
+      if (catFilter.has(key)) catFilter.delete(key);
+      else catFilter.add(key);
+      item.setAttribute('aria-pressed', String(catFilter.has(key)));
+      applyFilters();
+    });
     document.getElementById('legend').append(item);
   });
 }
@@ -574,6 +863,7 @@ function openPage(key, x, y) {
     transitioning = false;
     page.focus({ preventScroll: true });
     if (key === 'table') {
+      placeGoo();
       relayout();
       if (pendingMode) {
         const picked = pendingMode;
@@ -581,6 +871,10 @@ function openPage(key, x, y) {
         setMode(picked);
       } else {
         arriveTable();
+      }
+      if (pendingSandbox) {
+        pendingSandbox = false;
+        if (window.scilampOpenSandbox) window.scilampOpenSandbox();
       }
     }
   }, reducedMotion ? 0 : REVEAL_MS);
@@ -600,6 +894,7 @@ function closePage(key, x, y) {
   void reveal.offsetWidth;
 
   page.classList.remove('is-open');
+  if (page.contains(document.activeElement)) menuTab?.focus({ preventScroll: true });
   page.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('page-open');
 
@@ -611,13 +906,43 @@ function closePage(key, x, y) {
   setTimeout(() => {
     reveal.classList.remove('animate', 'active');
     transitioning = false;
-    document.querySelector(`[data-page="${key}"]`)?.focus();
+    menuTab?.focus();
   }, reducedMotion ? 0 : REVEAL_MS);
 }
 
 function cardCentre(card) {
   const box = card.getBoundingClientRect();
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+}
+
+/* the section buttons live in the drawer, so the reveal always grows from the menu tab */
+function pageOrigin() {
+  return cardCentre(menuTab);
+}
+
+/* switch pages without leaving a second one open, and without leaving the sandbox
+   or a sheet floating above the page you just left */
+function showPage(key) {
+  if (transitioning) {
+    setTimeout(() => showPage(key), 220);
+    return;
+  }
+  if (window.scilampSandboxOpen && window.scilampCloseSandbox) window.scilampCloseSandbox();
+  if (detail.classList.contains('is-open') && !sheetClosing) closeDetail();
+  closeDrawer();
+
+  const current = document.querySelector('.page.is-open');
+  if (current && current.id === `page-${key}`) return;
+  if (current) {
+    current.classList.remove('is-open');
+    current.setAttribute('aria-hidden', 'true');
+  }
+  const { x, y } = pageOrigin();
+  openPage(key, x, y);
+}
+
+function openKey(key) {
+  showPage(key);
 }
 
 buildTable();
@@ -641,6 +966,125 @@ const pageTable = document.getElementById('page-table');
 const stageView = document.getElementById('stage');
 const stageBoard = document.getElementById('table');
 const tiles = [...stageBoard.querySelectorAll('.el')];
+
+/* ---------- search, category filters, heatmap ---------- */
+
+const searchInput = document.getElementById('search');
+const resetBtn = document.getElementById('filter-reset');
+const emptyNote = document.getElementById('empty-note');
+const filterStatus = document.getElementById('filter-status');
+const hmSelect = document.getElementById('hm-prop');
+const hmLegend = document.getElementById('hm-legend');
+const hmLow = document.getElementById('hm-low');
+const hmHigh = document.getElementById('hm-high');
+const hmUnit = document.getElementById('hm-unit');
+
+const catFilter = new Set();
+let query = '';
+let heatProp = '';
+
+function cellMatches([num, sym, name, cat]) {
+  if (catFilter.size && !catFilter.has(cat)) return false;
+  if (!query) return true;
+  return (
+    sym.toLowerCase().startsWith(query) ||
+    name.toLowerCase().includes(query) ||
+    String(num) === query ||
+    String(num).startsWith(query)
+  );
+}
+
+/* dimming keeps the lattice intact: cards stay in their slots, only their paint leaves */
+function applyFilters() {
+  let hits = 0;
+  ELEMENTS.forEach((el, i) => {
+    const hit = cellMatches(el);
+    if (hit) hits += 1;
+    tiles[i].classList.toggle('is-dim', !hit);
+    tiles[i].inert = !hit;
+  });
+  emptyNote.hidden = hits > 0;
+  filterStatus.textContent = query || catFilter.size ? `${hits} of 118 elements match` : '';
+}
+
+searchInput.addEventListener('input', () => {
+  query = searchInput.value.trim().toLowerCase();
+  applyFilters();
+});
+
+function clearHeat() {
+  heatProp = '';
+  delete pageTable.dataset.heatmap;
+  tiles.forEach((cell) => {
+    cell.style.removeProperty('--hm');
+    cell.style.removeProperty('--hm-text');
+  });
+  hmLegend.hidden = true;
+}
+
+function applyHeat(key, map) {
+  const prop = HEAT_PROPS[key];
+  const vals = ELEMENTS.map((el) => {
+    const rec = map.get(el[0]);
+    return rec ? rec[key] : null;
+  });
+
+  let min = Infinity;
+  let max = -Infinity;
+  vals.forEach((v) => {
+    if (v == null) return;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  });
+  const span = max - min || 1;
+
+  tiles.forEach((cell, i) => {
+    const v = vals[i];
+    if (v == null) {
+      cell.style.setProperty('--hm', 'var(--hm-null)');
+      cell.style.setProperty('--hm-text', 'var(--text)');
+      return;
+    }
+    const rgb = heatRgb((v - min) / span);
+    cell.style.setProperty('--hm', `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`);
+    cell.style.setProperty('--hm-text', heatInk(rgb));
+  });
+
+  pageTable.dataset.heatmap = key;
+  hmUnit.textContent = `${prop.label} · ${prop.unit}`;
+  hmLow.textContent = prop.fmt(min);
+  hmHigh.textContent = prop.fmt(max);
+  hmLegend.hidden = false;
+}
+
+hmSelect.addEventListener('change', () => {
+  const key = hmSelect.value;
+  if (!key) { clearHeat(); return; }
+  heatProp = key;
+  hmSelect.disabled = true;
+  loadExtended().then((map) => {
+    hmSelect.disabled = false;
+    if (heatProp !== key) return;
+    if (!map) {
+      clearHeat();
+      hmSelect.value = '';
+      filterStatus.textContent = 'property data unavailable — check the connection';
+      return;
+    }
+    applyHeat(key, map);
+  });
+});
+
+resetBtn.addEventListener('click', () => {
+  searchInput.value = '';
+  query = '';
+  catFilter.clear();
+  document.querySelectorAll('.legend-item').forEach((b) => b.setAttribute('aria-pressed', 'false'));
+  hmSelect.value = '';
+  clearHeat();
+  applyFilters();
+  searchInput.focus();
+});
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const norm = (a) => {
@@ -872,6 +1316,7 @@ function snapTo(poses, newReach, size) {
   card = cardFrom = cardGoal = size.slice();
   writeCard(card);
   tiles.forEach((cell, i) => writeTile(cell, shown[i]));
+  nearPrev.fill(NaN);
   fadeByDepth();
 }
 
@@ -885,6 +1330,7 @@ const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) 
 /* the flat table is painted by the grid, so the tiles hand back their 3D transforms once they land */
 function landTable() {
   pageTable.dataset.mode = 'table';
+  nearPrev.fill(NaN);
   tiles.forEach((cell) => {
     ['--px', '--py', '--pz', '--oy', '--ox', '--near'].forEach((name) => cell.style.removeProperty(name));
   });
@@ -965,6 +1411,26 @@ function pinPose() {
   if (morphRAF) morphPose = false;
 }
 
+/* pointer events arrive faster than frames, so a drag accumulates its deltas
+   and lands them once per frame instead of repainting the board per event */
+function applyDrag() {
+  drag.raf = 0;
+  const dx = drag.pdx;
+  const dy = drag.pdy;
+  drag.pdx = 0;
+  drag.pdy = 0;
+
+  /* the slider reads as a multiplier but bites as its square, so the two ends
+     of the range feel like entirely different hands on the wheel */
+  const turn = SENS.turn * SENS.turn;
+  spin += dx * 0.32 * turn;
+  tilt = clamp(tilt - dy * 0.32 * turn, -88, 88);
+  spinVel = spinVel * 0.7 + dx * 0.1 * turn;
+  tiltVel = tiltVel * 0.7 - dy * 0.1 * turn;
+  applyRotation();
+  fadeByDepth();
+}
+
 function relayout() {
   if (!stageView.offsetWidth || !stageView.offsetHeight) return;   /* the page is hidden; wait for it to come back */
   const built = build(arrangement);
@@ -981,6 +1447,8 @@ function relayout() {
 }
 
 /* how near each tile is to the camera, so the far half of a shape recedes instead of clouding the near half */
+const nearPrev = tiles.map(() => NaN);
+
 function fadeByDepth() {
   if (pageTable.dataset.mode === 'table') return;
   const ct = Math.cos(tilt * DEG);
@@ -997,7 +1465,11 @@ function fadeByDepth() {
   tiles.forEach((cell, i) => {
     const p = shown[i];
     const raw = Math.pow(clamp((camZ(p[0], p[1], p[2]) / reach + 1) / 2, 0, 1), 1.25);
-    cell.style.setProperty('--near', (1 - (1 - raw) * shade).toFixed(3));
+    const v = 1 - (1 - raw) * shade;
+    /* an imperceptible step is not worth repainting 118 cards for */
+    if (Math.abs(v - nearPrev[i]) < 0.02) return;
+    nearPrev[i] = v;
+    cell.style.setProperty('--near', v.toFixed(2));
   });
 }
 
@@ -1037,7 +1509,7 @@ stageView.addEventListener('pointerdown', (event) => {
   pinPose();
   spinVel = 0;
   tiltVel = 0;
-  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: 0 };
+  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: 0, pdx: 0, pdy: 0, raf: 0 };
   stageView.classList.add('dragging');
 });
 
@@ -1048,25 +1520,22 @@ window.addEventListener('pointermove', (event) => {
   drag.x = event.clientX;
   drag.y = event.clientY;
   drag.moved += Math.abs(dx) + Math.abs(dy);
+  drag.pdx += dx;
+  drag.pdy += dy;
+  if (!drag.raf) drag.raf = requestAnimationFrame(applyDrag);
+}, { passive: true });
 
-  /* the slider reads as a multiplier but bites as its square, so the two ends
-     of the range feel like entirely different hands on the wheel */
-  const turn = SENS.turn * SENS.turn;
-  spin += dx * 0.32 * turn;
-  tilt = clamp(tilt - dy * 0.32 * turn, -88, 88);
-  spinVel = spinVel * 0.7 + dx * 0.1 * turn;
-  tiltVel = tiltVel * 0.7 - dy * 0.1 * turn;
-  applyRotation();
-  fadeByDepth();
-});
+window.addEventListener('pointerup', endDrag);
+window.addEventListener('pointercancel', endDrag);
 
-window.addEventListener('pointerup', (event) => {
+function endDrag(event) {
   if (!drag || event.pointerId !== drag.id) return;
+  if (drag.raf) { cancelAnimationFrame(drag.raf); drag.raf = 0; }
   suppressClick = drag.moved > 6;
   drag = null;
   stageView.classList.remove('dragging');
   startGlide();
-});
+}
 
 stageView.addEventListener('click', (event) => {
   if (!suppressClick) return;
@@ -1075,12 +1544,22 @@ stageView.addEventListener('click', (event) => {
   event.preventDefault();
 }, true);
 
+/* wheel events also queue up; the zoom is applied once per frame */
+let wheelAcc = 0;
+let wheelRAF = 0;
+
 stageView.addEventListener('wheel', (event) => {
   if (arrangement === 'table') return;
   event.preventDefault();
-  pinPose();
-  zoom = clamp(zoom * (1 - event.deltaY * 0.0014 * SENS.zoom * SENS.zoom), 0.55, 2.2);
-  applyRotation();
+  wheelAcc += event.deltaY;
+  if (wheelRAF) return;
+  wheelRAF = requestAnimationFrame(() => {
+    wheelRAF = 0;
+    pinPose();
+    zoom = clamp(zoom * (1 - wheelAcc * 0.0014 * SENS.zoom * SENS.zoom), 0.55, 2.2);
+    wheelAcc = 0;
+    applyRotation();
+  });
 }, { passive: false });
 
 function setMode(name) {
@@ -1113,12 +1592,37 @@ function setMode(name) {
   morphTo(built.poses, built.reach, built.tile);
 }
 
-/* the stage is measured whenever it gains a size, so reopening the page re-places everything */
-new ResizeObserver(() => relayout()).observe(stageView);
+/* the stage is measured whenever it gains a size, so reopening the page re-places everything;
+   a resize fires a storm of observations, so the rebuild waits for the dust to settle */
+let stageResizeTimer = null;
+new ResizeObserver(() => {
+  clearTimeout(stageResizeTimer);
+  stageResizeTimer = setTimeout(() => {
+    stageResizeTimer = null;
+    relayout();
+  }, 120);
+}).observe(stageView);
 
 zone.addEventListener('click', closeDetail);
 zoomer.addEventListener('click', closeDetail);
-document.getElementById('facts-close').addEventListener('click', closeDetail);
+factsClose.addEventListener('click', closeDetail);
+
+detail.addEventListener('keydown', (event) => {
+  if (event.key !== 'Tab' || !detail.classList.contains('is-open')) return;
+  const items = sheetFocusables();
+  if (!items.length) { event.preventDefault(); factsClose.focus(); return; }
+  const first = items[0];
+  const last = items[items.length - 1];
+  const inside = detail.contains(document.activeElement);
+
+  if (event.shiftKey && (document.activeElement === first || !inside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || !inside)) {
+    event.preventDefault();
+    first.focus();
+  }
+});
 
 render();
 
@@ -1130,7 +1634,11 @@ const menuTab = document.getElementById('menu-tab');
 const scrim = document.getElementById('scrim');
 const drawer = document.getElementById('drawer');
 const settingsPane = drawer.querySelector('.drawer-pane[data-pane="settings"]');
-const navItems = [...drawer.querySelectorAll('.goo-item')];
+const gearBtn = document.getElementById('drawer-gear');
+const tableBtn = document.getElementById('drawer-table');
+const nomBtn = document.getElementById('drawer-nom');
+const nomBack = document.getElementById('nom-back');
+const navItems = [...document.querySelectorAll('#goo-nav .goo-item')];
 const gooDot = document.getElementById('goo-dot');
 const gooPop = document.getElementById('goo-pop');
 const GOO_DOT = 54;   /* must match the bubble sizes in the stylesheet */
@@ -1290,14 +1798,41 @@ miniTab.addEventListener('keydown', (event) => {
   backToMenu();
 });
 
-/* the drawer is the way back out of everything, so its cord closes the page too */
+/* the drawer is the way back out of everything, so its cord closes every layer too */
 function backToMenu() {
   closeDrawer();
+  if (window.scilampSandboxOpen && window.scilampCloseSandbox) window.scilampCloseSandbox();
+  if (detail.classList.contains('is-open')) closeDetail();
   const open = document.querySelector('.page.is-open');
   if (!open) return;
   const key = open.id.slice('page-'.length);
-  const { x, y } = cardCentre(document.querySelector(`[data-page="${key}"]`));
+  const { x, y } = pageOrigin();
   closePage(key, x, y);
+}
+
+function openSandboxFromNav({ shelf = false } = {}) {
+  if (transitioning) {
+    setTimeout(() => openSandboxFromNav({ shelf }), 220);
+    return;
+  }
+  if (detail.classList.contains('is-open')) closeDetail();
+  closeDrawer();
+
+  const start = () => {
+    if (window.scilampOpenSandbox) window.scilampOpenSandbox();
+    if (shelf && window.scilampShowShelf) window.scilampShowShelf();
+  };
+
+  if (pageTable.classList.contains('is-open')) { start(); return; }
+
+  const current = document.querySelector('.page.is-open');
+  if (current) {
+    current.classList.remove('is-open');
+    current.setAttribute('aria-hidden', 'true');
+  }
+  pendingSandbox = true;
+  const { x, y } = pageOrigin();
+  openPage('table', x, y);
 }
 
 function drawerOpen() {
@@ -1310,8 +1845,8 @@ function openDrawer() {
   drawer.removeAttribute('aria-hidden');
   scrim.classList.add('is-on');
   menuTab.setAttribute('aria-expanded', 'true');
-  /* what the menu offers depends on where you are: the lamp and its cord
-     only mean something once a page is open */
+  /* the nav bubble reflects where you are: the shape you are looking at, or the
+     flat table when nothing is open yet */
   setNav(document.querySelector('.page.is-open') ? arrangement : 'table');
   measureMini();
 }
@@ -1319,6 +1854,7 @@ function openDrawer() {
 function closeDrawer() {
   if (!drawerOpen()) return;
   drawer.classList.remove('is-open');
+  if (drawer.contains(document.activeElement)) menuTab.focus({ preventScroll: true });
   drawer.setAttribute('aria-hidden', 'true');
   scrim.classList.remove('is-on');
   menuTab.setAttribute('aria-expanded', 'false');
@@ -1328,11 +1864,24 @@ menuTab.addEventListener('click', () => (drawerOpen() ? closeDrawer() : openDraw
 scrim.addEventListener('click', closeDrawer);
 document.getElementById('drawer-close').addEventListener('click', closeDrawer);
 
+/* the gear unfolds the settings section in place; the table button is the way in */
+function setSettings(open) {
+  settingsPane.hidden = !open;
+  settingsPane.classList.toggle('is-on', open);
+  gearBtn.setAttribute('aria-expanded', String(open));
+}
+
+gearBtn.addEventListener('click', () => setSettings(settingsPane.hidden));
+
+/* each section button opens its page from the drawer, closing whatever was up */
+tableBtn.addEventListener('click', () => openKey('table'));
+nomBtn.addEventListener('click', () => openKey('nom'));
+nomBack.addEventListener('click', backToMenu);
+
 /* the panel is measured again once it finishes sliding in, because a viewport
    that was asleep while it opened can hand back half-baked widths */
 drawer.addEventListener('transitionend', (event) => {
   if (event.propertyName !== 'transform' || !drawerOpen()) return;
-  placeGoo();
   measureMini();
 });
 
@@ -1353,14 +1902,11 @@ function setNav(name) {
     b.classList.toggle('is-on', on);
     b.setAttribute('aria-pressed', String(on));
   });
-  settingsPane.hidden = name !== 'settings';
-  settingsPane.classList.toggle('is-on', name === 'settings');
   placeGoo();
 }
 
 navItems.forEach((button) => button.addEventListener('click', () => {
   const name = button.dataset.nav;
-  if (name === 'settings') { setNav('settings'); return; }
   if (name === 'lamp') { backToMenu(); return; }
 
   setNav(name);
@@ -1368,12 +1914,9 @@ navItems.forEach((button) => button.addEventListener('click', () => {
     setMode(name);
   } else {
     pendingMode = name;
-    const card = document.querySelector('[data-page="table"]');
-    const { x, y } = cardCentre(card);
+    const { x, y } = pageOrigin();
     openPage('table', x, y);
   }
-  /* the shape morphs behind the panel, so the panel gets out of the way */
-  setTimeout(closeDrawer, 280);
 }));
 
 function pickGroup(selector, apply) {
@@ -1407,9 +1950,31 @@ function bindSens(id, key) {
 bindSens('sens-turn', 'turn');
 bindSens('sens-zoom', 'zoom');
 
+let winResizeTimer = null;
 window.addEventListener('resize', () => {
-  measureMini();
-  if (drawerOpen()) placeGoo();
+  clearTimeout(winResizeTimer);
+  winResizeTimer = setTimeout(() => {
+    measureMini();
+    if (pageTable.classList.contains('is-open')) placeGoo();
+  }, 150);
 });
 setNav('table');
 measureMini();
+
+/* small public surface for the sandbox, the index and the tour */
+window.SciLampSheet = {
+  openElement,
+  openProduct,
+  openHint,
+  close: closeDetail,
+  isOpen: () => detail.classList.contains('is-open'),
+};
+window.SciLampNav = {
+  page: showPage,
+  home: backToMenu,
+  drawer: (open) => (open ? openDrawer() : closeDrawer()),
+  settings: (open) => setSettings(Boolean(open)),
+  openSandbox: openSandboxFromNav,
+  index: () => showPage('index'),
+  tutorial: () => { if (window.scilampStartTutorial) window.scilampStartTutorial(); },
+};
