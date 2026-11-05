@@ -1,0 +1,2 @@
+- the animation is not smooth
+- words overall are too small for the user to see
