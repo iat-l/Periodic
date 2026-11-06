@@ -3,140 +3,215 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sci-lamp — light up the elements</title>
-<meta name="description" content="Sci-lamp — an interactive periodic table and chemistry notebook. Pull the flower lamp's cord to the end and the room lights up." />
-<meta name="theme-color" content="#f0c14b" />
+<title>Sci-lamp — a field guide to the elements</title>
+<meta name="description" content="Sci-lamp is a calm, visual field guide to the 118 elements — an interactive periodic table, nomenclature handbook and compound sandbox." />
+<meta name="theme-color" content="#fafaf7" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<main class="room" id="room">
 
-  <div class="light" aria-hidden="true">
-    <div class="wash"></div>
-    <div class="bloom"></div>
-    <div class="cone"></div>
-    <div class="pool"></div>
+<!-- ============================================================
+     TOP BAR — one quiet place to move between sections
+     ============================================================ -->
+<header class="topbar" id="topbar">
+  <button class="topbar-brand" id="nav-home" type="button" aria-label="Sci-lamp home">
+    <span class="brand-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="brand-word">Sci—lamp</span>
+  </button>
+
+  <nav class="topnav" id="topnav-links" aria-label="Sections">
+    <button class="topnav-link" type="button" data-nav="table" aria-label="Periodic table">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="5" height="5" rx="1" /><rect x="15" y="4" width="5" height="5" rx="1" /><rect x="4" y="15" width="5" height="5" rx="1" /><rect x="15" y="15" width="5" height="5" rx="1" /><rect x="10.5" y="9.5" width="3" height="5" rx="0.6" /></svg>
+      <span>Table</span>
+    </button>
+    <button class="topnav-link" type="button" data-nav="sandbox" aria-label="Sandbox">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg>
+      <span>Sandbox</span>
+    </button>
+    <button class="topnav-link" type="button" data-nav="nom" aria-label="Nomenclature">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M9 7h6M9 11h4" /></svg>
+      <span>Nomenclature</span>
+    </button>
+    <button class="topnav-link" type="button" data-nav="index" aria-label="Compound index">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /><circle cx="18" cy="18" r="1.4" /></svg>
+      <span>Index</span>
+    </button>
+  </nav>
+
+  <div class="topbar-more" id="topbar-more">
+    <button class="topbar-gear" id="nav-more" type="button" aria-label="More options" aria-haspopup="true" aria-expanded="false" aria-controls="nav-menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+    </button>
+
+    <div class="nav-menu" id="nav-menu" hidden>
+      <p class="nav-menu-kicker">More</p>
+      <button class="nav-menu-item" type="button" data-menu="tutorial">
+        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg></span>
+        <span><strong>Tutorial</strong><small>Tour the whole site</small></span>
+      </button>
+      <button class="nav-menu-item" type="button" data-menu="help">
+        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4" /><path d="M12 17h.01" /></svg></span>
+        <span><strong>Help</strong><small>How it works</small></span>
+      </button>
+      <button class="nav-menu-item" type="button" data-menu="settings" id="nav-settings-toggle" aria-expanded="false" aria-controls="nav-settings">
+        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg></span>
+        <span><strong>Settings</strong><small>Drag sensitivity</small></span>
+      </button>
+
+      <div class="nav-settings" id="nav-settings" hidden>
+        <label class="slide">
+          <span>Turn</span>
+          <input type="range" id="sens-turn" min="0.1" max="3" step="0.1" value="1" />
+          <output id="sens-turn-out">1.0</output>
+        </label>
+        <label class="slide">
+          <span>Zoom</span>
+          <input type="range" id="sens-zoom" min="0.1" max="3" step="0.1" value="1" />
+          <output id="sens-zoom-out">1.0</output>
+        </label>
+        <p class="nav-settings-note">Scales drag and wheel gestures on the 3D views.</p>
+      </div>
+    </div>
   </div>
+</header>
 
-  <div class="vignette" aria-hidden="true"></div>
+<!-- ============================================================
+     COVER — the editorial front page
+     ============================================================ -->
+<main class="cover" id="cover" aria-label="Sci-lamp home">
+  <section class="cover-hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="hero-kicker"><span class="rule" aria-hidden="true"></span>Interactive field guide &middot; 118 elements</p>
+      <h1 class="hero-title" id="hero-title">Sci<span class="hero-dash">—</span><em>lamp</em></h1>
+      <p class="hero-sub">A calm visual guide to the elements — explore, name and build.</p>
+      <div class="hero-actions">
+        <button class="btn btn-solid" type="button" data-open="table">
+          <span>Open the table</span>
+          <span class="btn-arrow" aria-hidden="true">&rarr;</span>
+        </button>
+        <button class="btn btn-line" type="button" data-open="tutorial">Take the tour</button>
+      </div>
+    </div>
 
-  <!-- ambient dressing for the landing: a quiet atom of orbit rings by the bulb
-       and a few motes catching the light — purely decorative, never interactive -->
-  <div class="room-decor" aria-hidden="true">
-    <span class="decor-orbit decor-orbit-a"></span>
-    <span class="decor-orbit decor-orbit-b"></span>
-    <span class="decor-orbit decor-orbit-c"></span>
-    <span class="mote mote-1"></span>
-    <span class="mote mote-2"></span>
-    <span class="mote mote-3"></span>
-    <span class="mote mote-4"></span>
-    <span class="mote mote-5"></span>
-    <span class="mote mote-6"></span>
-  </div>
+    <div class="hero-art" aria-hidden="true">
+      <span class="hero-chip chip-mint"><small>01</small>H</span>
+      <span class="hero-chip chip-sky"><small>08</small>O</span>
+      <span class="hero-chip chip-blush"><small>26</small>Fe</span>
+      <span class="hero-chip chip-butter"><small>79</small>Au</span>
+    </div>
+  </section>
 
-  <div class="lamp" id="lamp-rig">
-    <svg class="lamp-svg" viewBox="0 0 300 460" role="presentation">
-      <defs>
-        <radialGradient id="bulbLit" cx="50%" cy="38%" r="70%">
-          <stop class="lit-core" offset="0%" />
-          <stop class="lit-mid" offset="55%" />
-          <stop class="lit-edge" offset="100%" />
-        </radialGradient>
-        <radialGradient id="escaping" cx="50%" cy="30%" r="75%">
-          <stop offset="0%" stop-color="var(--lamp)" stop-opacity="0.85" />
-          <stop offset="100%" stop-color="var(--lamp)" stop-opacity="0" />
-        </radialGradient>
-      </defs>
+  <section class="cover-index" aria-labelledby="contents-title">
+    <header class="cover-index-head">
+      <h2 id="contents-title">Choose a section</h2>
+      <span>Five quiet ways in</span>
+    </header>
 
-      <!-- the supply cord coils on the floor, then one stem rises and arcs over -->
-      <path class="coil" d="M224 434c0 17-148 17-148 0s126-16 126-1-108 12-108-1 92-16 88-37" />
-      <path class="stem" d="M182 396C170 320 168 250 176 190c8-56-18-88-56-82" />
+    <div class="cover-grid">
+      <button class="cover-card cover-card-wide card-mint" type="button" data-open="table">
+        <span class="cover-card-top">
+          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="5" height="5" rx="1" /><rect x="15" y="4" width="5" height="5" rx="1" /><rect x="4" y="15" width="5" height="5" rx="1" /><rect x="15" y="15" width="5" height="5" rx="1" /><rect x="10.5" y="9.5" width="3" height="5" rx="0.6" /></svg></span>
+          <span class="cc-go" aria-hidden="true">&nearr;</span>
+        </span>
+        <span class="cover-card-title">Periodic Table</span>
+        <span class="cover-card-text">All 118 elements, searchable and heat-mapped.</span>
+      </button>
 
-      <!-- the flower, nodding from the end of the stem; the bulb hides inside it -->
-      <g class="head" transform="translate(120 108) rotate(22) scale(1.12)">
-        <ellipse class="bulb" cx="0" cy="30" rx="17" ry="14" />
-        <path class="petal petal-back" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-52)" />
-        <path class="petal petal-back" d="M0 0c22 8 32 40 18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(52)" />
-        <path class="petal" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-25)" />
-        <path class="petal" d="M0 0c22 8 32 40 18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(25)" />
-        <path class="petal petal-front" d="M0 0c-20 10-26 42-12 66 6 12 18 12 24 0C26 42 20 10 0 0z" />
-        <path class="calyx" d="M-16-8C-12-22 12-22 16-8c2 10-8 18-16 18S-18 2-16-8z" />
-        <!-- light leaking between the petals, so the flower reads as lit from inside -->
-        <ellipse class="escaping" cx="0" cy="40" rx="44" ry="40" />
-      </g>
-    </svg>
-  </div>
+      <button class="cover-card card-sky" type="button" data-open="nom">
+        <span class="cover-card-top">
+          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M9 7h6M9 11h4" /></svg></span>
+          <span class="cc-go" aria-hidden="true">&nearr;</span>
+        </span>
+        <span class="cover-card-title">Nomenclature</span>
+        <span class="cover-card-text">Rules, examples and five short guided paths.</span>
+      </button>
 
-  <!-- the pull chain hangs from the underside of the flower; the cord itself is drawn in JS -->
-  <div class="pull" id="pull">
-    <svg class="pull-svg" viewBox="0 0 1 1">
-      <line class="pull-cord" x1="0" y1="0" x2="0" y2="78" />
-      <circle class="pull-tab" cx="0" cy="78" r="8" />
-    </svg>
-    <button class="pull-hit" id="pull-button" type="button"
-            aria-pressed="false" aria-label="Pull the cord to the end to turn the lamp on"></button>
-    <span class="pull-hint" aria-hidden="true">pull</span>
-  </div>
+      <button class="cover-card card-blush" type="button" data-open="sandbox">
+        <span class="cover-card-top">
+          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg></span>
+          <span class="cc-go" aria-hidden="true">&nearr;</span>
+        </span>
+        <span class="cover-card-title">Sandbox</span>
+        <span class="cover-card-text">Build compounds atom by atom on a quiet bench.</span>
+      </button>
 
-  <div class="content">
-    <section class="welcome">
-      <h1 class="headline">
-        <span class="line">Sci-lamp</span>
-      </h1>
-      <p class="eyebrow">light up the elements</p>
-    </section>
-  </div>
+      <button class="cover-card card-butter" type="button" data-open="index">
+        <span class="cover-card-top">
+          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" /><circle cx="18" cy="18" r="1.4" /></svg></span>
+          <span class="cc-go" aria-hidden="true">&nearr;</span>
+        </span>
+        <span class="cover-card-title">Compound Index</span>
+        <span class="cover-card-text">Keep every compound the bench discovers.</span>
+      </button>
 
-  <footer class="readout" aria-live="polite">
-    <span class="swatch" aria-hidden="true"></span>
-    <span class="shade-name" id="shade-name">Sci-lamp</span>
+      <button class="cover-card card-lav" type="button" data-open="tutorial">
+        <span class="cover-card-top">
+          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg></span>
+          <span class="cc-go" aria-hidden="true">&nearr;</span>
+        </span>
+        <span class="cover-card-title">Tutorial</span>
+        <span class="cover-card-text">A gentle twelve-stop tour of the whole site.</span>
+      </button>
+    </div>
+  </section>
+
+  <footer class="cover-foot">
+    <span>Sci—lamp &middot; an independent study project</span>
+    <span>Progress stays on this device</span>
+    <span>&copy; 2026</span>
   </footer>
 </main>
 
-<!-- the periodic table page, revealed by an expanding circle -->
-<section class="page" id="page-table" data-mode="table" tabindex="-1" aria-label="Periodic table of the elements" aria-hidden="true">
+<!-- ============================================================
+     PERIODIC TABLE
+     ============================================================ -->
+<section class="page page-table" id="page-table" data-mode="table" tabindex="-1" aria-label="Periodic table of the elements" aria-hidden="true">
   <header class="page-bar">
-    <h2 class="page-title">Periodic<span>Table</span></h2>
+    <div class="page-head">
+      <p class="page-kicker">Explore</p>
+      <h2 class="page-title">Periodic Table</h2>
+    </div>
     <div class="hud" id="hud" aria-live="polite">
       <span class="hud-sym" id="hud-sym">&mdash;</span>
       <span class="hud-meta">
-        <span class="hud-name" id="hud-name">hover an element</span>
+        <span class="hud-name" id="hud-name">Hover an element</span>
         <span class="hud-cat" id="hud-cat">118 entries &middot; 18 groups</span>
       </span>
     </div>
-    <button class="sandbox-entry" id="sandbox-entry" type="button" aria-label="Go to Sandbox Mode">
+    <button class="sandbox-entry" id="sandbox-entry" type="button" aria-label="Open the sandbox">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg>
-      <span>Sandbox mode</span>
+      <span>Open bench</span>
     </button>
   </header>
 
   <div class="tools" id="tools">
     <label class="tool-search">
       <span class="sr">Search elements by name, symbol or number</span>
-      <input type="search" id="search" placeholder="search — name, symbol or number" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
+      <svg class="tool-search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M16.5 16.5L21 21" /></svg>
+      <input type="search" id="search" placeholder="Search an element" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
     </label>
     <label class="tool-heat">
-      <span class="sr">Heatmap property</span>
+      <span class="tool-label">Heatmap</span>
       <select id="hm-prop">
-        <option value="">heatmap: off</option>
-        <option value="en">electronegativity</option>
-        <option value="radius">atomic radius</option>
-        <option value="melt">melting point</option>
-        <option value="boil">boiling point</option>
-        <option value="ie1">ionisation energy</option>
+        <option value="">Off</option>
+        <option value="en">Electronegativity</option>
+        <option value="radius">Atomic radius</option>
+        <option value="melt">Melting point</option>
+        <option value="boil">Boiling point</option>
+        <option value="ie1">Ionisation energy</option>
       </select>
     </label>
-    <button class="tool-btn" id="filter-reset" type="button">reset</button>
+    <button class="tool-btn" id="filter-reset" type="button">Reset</button>
     <span class="filter-status" id="filter-status" role="status"></span>
   </div>
 
   <div class="table-scroll" id="stage">
     <div class="table" id="table"></div>
-    <p class="stage-note" id="stage-note" aria-hidden="true">drag to turn &middot; scroll to zoom</p>
-    <p class="empty-note" id="empty-note" hidden>no elements match — try clearing the filters</p>
+    <p class="stage-note" id="stage-note" aria-hidden="true">Drag to turn &middot; scroll to zoom</p>
+    <p class="empty-note" id="empty-note" hidden>No elements match — try clearing the filters.</p>
   </div>
 
   <div class="hm-legend" id="hm-legend" hidden aria-hidden="true">
@@ -146,96 +221,57 @@
       <span class="hm-bar"></span>
       <span class="hm-end" id="hm-high"></span>
     </span>
-    <span class="hm-null"><i aria-hidden="true"></i>no data</span>
+    <span class="hm-null"><i aria-hidden="true"></i>No data</span>
   </div>
 
   <footer class="legend" id="legend" aria-label="Categories — click to filter"></footer>
 
-  <!-- liquid navigation: the bar and the raised bubble are one blurred body,
-       so the active item grows out of the bar on a gooey neck -->
-  <nav class="goo" id="goo-nav" aria-label="Sections and arrangements">
-    <svg class="goo-defs" aria-hidden="true" focusable="false">
-      <defs>
-        <filter id="gooey">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="7" />
-          <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -11" />
-        </filter>
-      </defs>
-    </svg>
-
-    <div class="goo-field" aria-hidden="true">
-      <div class="goo-bar"></div>
-      <div class="goo-dot" id="goo-dot"></div>
-    </div>
-    <div class="goo-pop" id="goo-pop" aria-hidden="true"></div>
-
-    <div class="goo-items">
-      <button class="goo-item" type="button" data-nav="lamp" aria-pressed="false">
-        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l3 8H4z" /><path d="M12 11v9" /><path d="M8.5 20h7" /></svg>
-        <span class="goo-label">lamp</span>
-        <span class="sr">Back to the lamp</span>
-      </button>
-      <button class="goo-item" type="button" data-nav="table" aria-pressed="true">
-        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M9 4v6" /><path d="M15 10v10" /></svg>
-        <span class="goo-label">table</span>
-        <span class="sr">Flat periodic table</span>
-      </button>
-      <button class="goo-item" type="button" data-nav="sphere" aria-pressed="false">
-        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><ellipse cx="12" cy="12" rx="8.5" ry="3.6" /><path d="M12 3.5v17" /></svg>
-        <span class="goo-label">sphere</span>
-        <span class="sr">Sphere arrangement</span>
-      </button>
-      <button class="goo-item" type="button" data-nav="helix" aria-pressed="false">
-        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3c7 2 7 5 0 7s-7 5 0 7 7 5 0 7" /><path d="M15 3c-7 2-7 5 0 7s7 5 0 7-7 5 0 7" /></svg>
-        <span class="goo-label">helix</span>
-        <span class="sr">Helix arrangement</span>
-      </button>
-      <button class="goo-item" type="button" data-nav="grid" aria-pressed="false">
-        <svg class="goo-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>
-        <span class="goo-label">grid</span>
-        <span class="sr">Grid arrangement</span>
-      </button>
-    </div>
+  <nav class="arrange" id="arrange" aria-label="Arrangements">
+    <span class="arrange-label">View</span>
+    <button class="arrange-btn is-on" type="button" data-nav="table" aria-pressed="true">Flat</button>
+    <button class="arrange-btn" type="button" data-nav="sphere" aria-pressed="false">Sphere</button>
+    <button class="arrange-btn" type="button" data-nav="helix" aria-pressed="false">Helix</button>
+    <button class="arrange-btn" type="button" data-nav="grid" aria-pressed="false">Grid</button>
   </nav>
-
 </section>
 
-<!-- nomenclature & formula writing: entry, handbook and guided paths -->
+<!-- ============================================================
+     NOMENCLATURE & FORMULA WRITING
+     ============================================================ -->
 <section class="page page-nom" id="page-nom" tabindex="-1" aria-label="Nomenclature and formula writing" aria-hidden="true">
   <header class="page-bar">
-    <h2 class="page-title">Nomenclature<span>&amp; Formula Writing</span></h2>
-    <button class="page-back" id="nom-back" type="button" aria-label="Back to the lamp">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-      <span>back</span>
-    </button>
+    <div class="page-head">
+      <p class="page-kicker">Read &amp; practise</p>
+      <h2 class="page-title">Nomenclature</h2>
+    </div>
   </header>
 
   <div class="nom-app" id="nom-app">
     <section class="nom-view nom-entry is-on" id="nom-entry" tabindex="-1" aria-label="Nomenclature start">
-      <p class="nom-kicker">learning lab &middot; nomenclature</p>
-      <h3 class="nom-lead">Names and formulas, <em>decoded</em>.</h3>
-      <p class="nom-sub">Browse the handbook at your own pace, or work through a guided path of short challenges. Progress is saved on this device.</p>
+      <p class="nom-kicker">Learning lab</p>
+      <h3 class="nom-lead">Names and formulas, <em>decoded.</em></h3>
+      <p class="nom-sub">Read a short rule, or practise with a guided path.</p>
 
       <div class="nom-choices">
-        <button class="nom-choice" id="nom-go-docs" type="button">
+        <button class="nom-choice nom-choice-docs" id="nom-go-docs" type="button">
           <span class="nom-choice-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M8 7h7" /><path d="M8 11h5" /></svg>
           </span>
           <span class="nom-choice-body">
             <span class="nom-choice-title">Explore the docs</span>
-            <span class="nom-choice-text">Rules, examples and a quick reference for ions, acids, prefixes and oxidation states.</span>
+            <span class="nom-choice-text">Open one rule at a time.</span>
             <span class="nom-choice-meta" id="nom-stat-docs">8 handbook sections</span>
           </span>
           <span class="nom-choice-go" aria-hidden="true">&rarr;</span>
         </button>
 
-        <button class="nom-choice" id="nom-go-paths" type="button">
+        <button class="nom-choice nom-choice-paths" id="nom-go-paths" type="button">
           <span class="nom-choice-ico" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M5 19c0-4 4-4 7-4s7 0 7-4-4-4-7-4-7 0-7-4" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="3" r="2" /><circle cx="12" cy="11" r="1.6" /></svg>
           </span>
           <span class="nom-choice-body">
             <span class="nom-choice-title">Choose a path</span>
-            <span class="nom-choice-text">Short guided sequences of multiple choice, formula building, naming and charge balancing.</span>
+            <span class="nom-choice-text">Four short challenges, with feedback.</span>
             <span class="nom-choice-meta" id="nom-stat-paths">5 guided paths</span>
           </span>
           <span class="nom-choice-go" aria-hidden="true">&rarr;</span>
@@ -243,15 +279,15 @@
       </div>
 
       <button class="nom-resume" id="nom-resume" type="button" hidden></button>
-      <p class="nom-note">No accounts, no server &mdash; your progress stays in this browser.</p>
+      <p class="nom-note">Progress stays in this browser.</p>
     </section>
 
     <section class="nom-view nom-docs" id="nom-docs" tabindex="-1" aria-label="Handbook" hidden>
       <div class="nom-top">
-        <button class="nom-crumb" id="docs-back" type="button">&larr; start</button>
+        <button class="nom-crumb" id="docs-back" type="button">&larr; Start</button>
         <label class="docs-search">
           <span class="sr">Search the handbook</span>
-          <input type="search" id="docs-search" placeholder="search rules and examples" autocomplete="off" spellcheck="false" aria-controls="docs-list" />
+          <input type="search" id="docs-search" placeholder="Search rules and examples" autocomplete="off" spellcheck="false" aria-controls="docs-list" />
         </label>
       </div>
       <div class="docs-nav" id="docs-nav" role="group" aria-label="Jump to a handbook section"></div>
@@ -261,22 +297,22 @@
 
     <section class="nom-view nom-paths" id="nom-paths" tabindex="-1" aria-label="Guided paths" hidden>
       <div class="nom-top">
-        <button class="nom-crumb" id="paths-back" type="button">&larr; start</button>
-        <span class="nom-top-note">progress saves on this device</span>
+        <button class="nom-crumb" id="paths-back" type="button">&larr; Start</button>
+        <span class="nom-top-note">Progress saves on this device</span>
       </div>
       <header class="nom-view-head">
-        <p class="nom-kicker">guided paths</p>
+        <p class="nom-kicker">Guided paths</p>
         <h3>Pick a trail</h3>
-        <p>Four short challenges per path, with feedback and explanations after every step.</p>
+        <p>Four short challenges, one at a time.</p>
       </header>
       <div class="paths-grid" id="paths-grid"></div>
     </section>
 
     <section class="nom-view nom-runner" id="nom-runner" tabindex="-1" aria-label="Guided path" hidden>
       <div class="nom-top">
-        <button class="nom-crumb" id="runner-back" type="button">&larr; paths</button>
+        <button class="nom-crumb" id="runner-back" type="button">&larr; Paths</button>
         <span class="runner-meta" id="runner-meta"></span>
-        <button class="nom-crumb runner-restart" id="runner-restart" type="button">restart</button>
+        <button class="nom-crumb runner-restart" id="runner-restart" type="button">Restart</button>
       </div>
       <header class="runner-head">
         <h3 id="runner-title"></h3>
@@ -288,48 +324,52 @@
   </div>
 </section>
 
-<!-- sandbox: a bench over the table page; the table stays mounted underneath -->
+<!-- ============================================================
+     SANDBOX
+     ============================================================ -->
 <section class="sandbox" id="sandbox" tabindex="-1" aria-label="Sandbox mode" aria-hidden="true" hidden>
   <div class="sandbox-inner">
     <header class="page-bar sandbox-bar">
-      <h2 class="page-title">Sandbox<span>Mode</span></h2>
-      <p class="sandbox-sub">build compounds atom by atom</p>
-      <button class="page-back sandbox-back" id="sandbox-back" type="button">
-        <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-        <span>back to table</span>
+      <div class="page-head">
+        <p class="page-kicker">Build</p>
+        <h2 class="page-title">The Bench</h2>
+      </div>
+      <button class="sandbox-help" id="sb-help" type="button">
+        <span class="sandbox-help-ico" aria-hidden="true">?</span>
+        How it works
       </button>
     </header>
 
     <div class="sandbox-grid">
       <section class="sandbox-bench" aria-label="Workspace">
         <div class="sb-workhead">
-          <span class="sb-kicker">reaction mixture</span>
-          <span class="sb-atom-count" id="sb-atom-count" role="status">empty bench</span>
+          <span class="sb-kicker">Reaction mixture</span>
+          <span class="sb-atom-count" id="sb-atom-count" role="status">Empty bench</span>
         </div>
 
         <div class="sb-workspace" id="sb-workspace" aria-label="Reaction mixture. Drop elements here.">
           <div class="sb-atoms" id="sb-atoms"></div>
-          <p class="sb-empty" id="sb-empty">Tap an element in the palette, or drag it here. Every tap adds one atom; use the steppers to set how many of each.</p>
+          <p class="sb-empty" id="sb-empty">Tap an element, then combine.</p>
         </div>
 
         <p class="sb-recipe" id="sb-recipe">Nothing on the bench yet.</p>
 
         <div class="sb-result" id="sb-result" role="status" aria-live="polite">
-          <p class="sb-result-empty">Combine any number of atoms. Metals with metals make alloys; a metal with a nonmetal makes an ionic compound; nonmetals make curated covalent molecules.</p>
+          <p class="sb-result-empty">Add a few atoms, then press Combine.</p>
         </div>
 
         <div class="sb-actions">
           <button class="sb-go" id="sb-combine" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16" /><path d="M4 12h16" /></svg>
-            <span>combine</span>
+            <span>Combine</span>
           </button>
           <div class="sb-process" id="sb-process" role="group" aria-label="Process">
-            <button class="sb-proc is-on" type="button" data-process="auto" aria-pressed="true">auto</button>
-            <button class="sb-proc" type="button" data-process="alloy" aria-pressed="false">alloy</button>
-            <button class="sb-proc" type="button" data-process="ionic" aria-pressed="false">ionic</button>
-            <button class="sb-proc" type="button" data-process="covalent" aria-pressed="false">covalent</button>
+            <button class="sb-proc is-on" type="button" data-process="auto" aria-pressed="true">Auto</button>
+            <button class="sb-proc" type="button" data-process="alloy" aria-pressed="false">Alloy</button>
+            <button class="sb-proc" type="button" data-process="ionic" aria-pressed="false">Ionic</button>
+            <button class="sb-proc" type="button" data-process="covalent" aria-pressed="false">Covalent</button>
           </div>
-          <button class="tool-btn sb-reset" id="sb-reset" type="button">clear bench</button>
+          <button class="tool-btn sb-reset" id="sb-reset" type="button">Clear bench</button>
         </div>
       </section>
 
@@ -337,7 +377,7 @@
         <section class="sb-panel sb-palette-panel" aria-labelledby="sb-palette-h">
           <div class="sb-panel-head">
             <h3 id="sb-palette-h">Elements</h3>
-            <span class="sb-panel-note">tap to add &middot; drag to the bench</span>
+            <span class="sb-panel-note">Tap to add &middot; drag to the bench</span>
           </div>
           <div class="sb-palette" id="sb-palette" role="group" aria-label="Element palette"></div>
         </section>
@@ -345,7 +385,7 @@
         <section class="sb-panel sb-info-panel" aria-labelledby="sb-info-h">
           <div class="sb-panel-head">
             <h3 id="sb-info-h">Element notes</h3>
-            <button class="sb-text-btn" id="sb-info-full" type="button">full details</button>
+            <button class="sb-text-btn" id="sb-info-full" type="button">Full details</button>
           </div>
           <div class="sb-info" id="sb-elinfo" aria-live="polite"></div>
         </section>
@@ -370,44 +410,45 @@
           <span class="sb-shelf-count" id="sb-shelf-count">0 saved</span>
         </div>
         <div class="sb-shelf-tools">
-          <button class="sb-text-btn" id="sb-shelf-index" type="button">compound index</button>
-          <button class="sb-text-btn is-danger" id="sb-shelf-clear" type="button">clear all</button>
+          <button class="sb-text-btn" id="sb-shelf-index" type="button">Compound index</button>
+          <button class="sb-text-btn is-danger" id="sb-shelf-clear" type="button">Clear all</button>
         </div>
       </div>
       <div class="sb-shelf-list" id="sb-shelf-list"></div>
       <p class="sb-save-status" id="sb-save-status" role="status" aria-live="polite"></p>
     </section>
-
-    <p class="sb-note">A deliberately small model: curated compounds, fixed primary ions and variable-composition alloys. Every successful product is saved on this device.</p>
   </div>
 </section>
 
-<!-- compound index: every catalogued compound, lit once discovered -->
+<!-- ============================================================
+     COMPOUND INDEX
+     ============================================================ -->
 <section class="page page-index" id="page-index" tabindex="-1" aria-label="Compound index" aria-hidden="true">
   <header class="page-bar">
-    <h2 class="page-title">Compound<span>Index</span></h2>
+    <div class="page-head">
+      <p class="page-kicker">Collect</p>
+      <h2 class="page-title">Compound Index</h2>
+    </div>
     <p class="index-progress-text" id="index-progress-text">0 of 61 discovered</p>
-    <button class="page-back" id="index-back" type="button">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-      <span>back</span>
-    </button>
   </header>
 
   <div class="index-app">
     <header class="index-intro">
-      <p class="nom-kicker">field guide &middot; compounds</p>
+      <p class="nom-kicker">Field guide</p>
       <h3 class="index-lead">Every compound the bench can make.</h3>
-      <p class="index-sub">Discover them by combining atoms in the sandbox. Found compounds keep their name and formula; the rest stay hidden behind a hint. Progress saves on this device.</p>
+      <p class="index-sub">Build one in the sandbox to reveal its name.</p>
       <div class="index-meter">
         <div class="index-bar" role="progressbar" aria-labelledby="index-progress-text" aria-valuemin="0" aria-valuemax="61" aria-valuenow="0" id="index-bar"><span id="index-fill"></span></div>
-        <button class="sb-text-btn" id="index-sandbox" type="button">open the sandbox</button>
+        <button class="sb-text-btn" id="index-sandbox" type="button">Open the sandbox</button>
       </div>
     </header>
     <div class="index-grid" id="index-grid"></div>
   </div>
 </section>
 
-<!-- one shared sheet: element facts, compound detail, creation popup and index hints -->
+<!-- ============================================================
+     DETAIL SHEET — element facts, product report, index hint
+     ============================================================ -->
 <div class="detail" id="detail" role="dialog" aria-modal="true" aria-labelledby="facts-title" aria-hidden="true" data-mode="element" data-cat="u">
   <button class="detail-zone" id="detail-zone" type="button" tabindex="-1" aria-label="Close details"></button>
 
@@ -419,7 +460,7 @@
   </article>
 
   <aside class="facts">
-    <button class="facts-close" id="facts-close" type="button">close &times;</button>
+    <button class="facts-close" id="facts-close" type="button">Close &times;</button>
     <h3 class="facts-title" id="facts-title"></h3>
     <p class="facts-sub" id="facts-sub"></p>
     <p class="facts-desc" id="facts-desc"></p>
@@ -434,137 +475,55 @@
   </aside>
 </div>
 
-<!-- the menu: a tab in the corner, and a panel that slides in from the left -->
-<button class="menu-tab" id="menu-tab" type="button" aria-expanded="false" aria-controls="drawer" aria-label="Open the Sci-lamp menu">
-  <span class="menu-line" aria-hidden="true"></span>
-  <span class="menu-line" aria-hidden="true"></span>
-  <span class="menu-line" aria-hidden="true"></span>
-</button>
-
-<div class="scrim" id="scrim"></div>
-
-<aside class="drawer" id="drawer" aria-label="Sci-lamp menu" aria-hidden="true">
-  <div class="drawer-decor" aria-hidden="true">
-    <span class="decor-glow"></span>
-    <span class="decor-orb decor-orb-1"></span>
-    <span class="decor-orb decor-orb-2"></span>
-    <span class="decor-orb decor-orb-3"></span>
-  </div>
-
-  <header class="drawer-head">
-    <span class="drawer-title">Sci-lamp</span>
-    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close the menu">&times;</button>
-  </header>
-
-  <!-- every way in, in one place: the two sections, then the gear that unfolds settings -->
-  <div class="drawer-nav" id="drawer-nav" role="group" aria-label="Go to a section">
-    <button class="drawer-go" id="drawer-table" type="button">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18" /><path d="M9 4v6" /><path d="M15 10v10" /></svg>
-      <span>Periodic Table</span>
-    </button>
-    <button class="drawer-go" id="drawer-nom" type="button">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg>
-      <span>Nomenclature &amp; Formula Writing</span>
-    </button>
-    <button class="drawer-go" id="drawer-index" type="button">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v18H6.5A2.5 2.5 0 0 0 4 18.5z" /><path d="M8 7h7" /><path d="M8 11h5" /><path d="M8 15h4" /></svg>
-      <span>Compound Index</span>
-    </button>
-    <button class="drawer-go" id="drawer-tutorial" type="button">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.5v.4" /><path d="M12 17h.01" /></svg>
-      <span>Tutorial</span>
-    </button>
-    <button class="drawer-go drawer-gear" id="drawer-gear" type="button" aria-expanded="false" aria-controls="drawer-settings">
-      <svg class="drawer-go-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M18.5 5.5l-2.1 2.1M7.6 16.4l-2.1 2.1" /></svg>
-      <span>Settings</span>
-    </button>
-  </div>
-
-  <section class="drawer-pane" id="drawer-settings" data-pane="settings" hidden>
-    <h3 class="drawer-sub">Theme</h3>
-    <div class="choices" id="themes" role="group" aria-label="Theme">
-      <button class="choice is-on" type="button" data-theme="midnight" aria-pressed="true">midnight</button>
-      <button class="choice" type="button" data-theme="graphite" aria-pressed="false">graphite</button>
-      <button class="choice" type="button" data-theme="lagoon" aria-pressed="false">lagoon</button>
+<!-- ============================================================
+     HELP — short answers, on demand
+     ============================================================ -->
+<div class="help" id="help" role="dialog" aria-modal="true" aria-labelledby="help-title" aria-hidden="true" hidden>
+  <button class="help-zone" id="help-zone" type="button" tabindex="-1" aria-label="Close help"></button>
+  <article class="help-card">
+    <button class="help-close" id="help-close" type="button" aria-label="Close help">&times;</button>
+    <p class="help-kicker">Field notes</p>
+    <h2 class="help-title" id="help-title">How it works</h2>
+    <div class="help-grid">
+      <section class="help-item help-mint">
+        <h3>Find an element</h3>
+        <p>Search by name, symbol or number, or tap any tile.</p>
+      </section>
+      <section class="help-item help-sky">
+        <h3>Read its card</h3>
+        <p>Facts, safety notes and a Bohr model open over the table.</p>
+      </section>
+      <section class="help-item help-blush">
+        <h3>Build a compound</h3>
+        <p>Add atoms on the bench, then press Combine.</p>
+      </section>
+      <section class="help-item help-butter">
+        <h3>Keep what you make</h3>
+        <p>Products save to this device and light up the index.</p>
+      </section>
     </div>
+    <p class="help-foot">No account, no server — everything stays in this browser.</p>
+    <button class="help-done" id="help-done" type="button">Got it</button>
+  </article>
+</div>
 
-    <h3 class="drawer-sub">Sensitivity</h3>
-    <label class="slide">
-      <span>turn</span>
-      <input type="range" id="sens-turn" min="0.1" max="3" step="0.1" value="1" />
-      <output id="sens-turn-out">1.0</output>
-    </label>
-    <label class="slide">
-      <span>zoom</span>
-      <input type="range" id="sens-zoom" min="0.1" max="3" step="0.1" value="1" />
-      <output id="sens-zoom-out">1.0</output>
-    </label>
-  </section>
-
-  <!-- the lamp waits at the bottom of the panel; its cord is the way back out -->
-  <div class="drawer-foot" id="drawer-foot">
-    <div class="mini-room is-lit" id="mini-room">
-      <svg class="mini-svg lamp-svg" viewBox="0 0 300 460" role="presentation">
-        <defs>
-          <radialGradient id="miniBulb" cx="50%" cy="38%" r="70%">
-            <stop class="lit-core" offset="0%" />
-            <stop class="lit-mid" offset="55%" />
-            <stop class="lit-edge" offset="100%" />
-          </radialGradient>
-          <radialGradient id="miniEscaping" cx="50%" cy="30%" r="75%">
-            <stop offset="0%" stop-color="var(--lamp)" stop-opacity="0.85" />
-            <stop offset="100%" stop-color="var(--lamp)" stop-opacity="0" />
-          </radialGradient>
-        </defs>
-
-        <path class="coil" d="M224 434c0 17-148 17-148 0s126-16 126-1-108 12-108-1 92-16 88-37" />
-        <path class="stem" d="M182 396C170 320 168 250 176 190c8-56-18-88-56-82" />
-
-        <g class="head" transform="translate(120 108) rotate(22) scale(1.12)">
-          <ellipse class="bulb" cx="0" cy="30" rx="17" ry="14" />
-          <path class="petal petal-back" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-52)" />
-          <path class="petal petal-back" d="M0 0c22 8 32 40 18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(52)" />
-          <path class="petal" d="M0 0c-22 8-32 40-18 68 8 14 20 12 24-2C14 40 12 14 0 0z" transform="rotate(-25)" />
-          <path class="petal" d="M0 0c22 8 32 40-18 68-8 14-20 12-24-2C-14 40-12 14 0 0z" transform="rotate(25)" />
-          <path class="petal petal-front" d="M0 0c-20 10-26 42-12 66 6 12 18 12 24 0C26 42 20 10 0 0z" />
-          <path class="calyx" d="M-16-8C-12-22 12-22 16-8c2 10-8 18-16 18S-18 2-16-8z" />
-          <ellipse class="escaping" cx="0" cy="40" rx="44" ry="40" />
-        </g>
-      </svg>
-
-      <div class="mini-pull" id="mini-pull">
-        <svg class="mini-pull-svg" viewBox="0 0 1 1">
-          <line class="mini-cord" x1="0" y1="0" x2="0" y2="34" />
-          <circle class="mini-dot" cx="0" cy="34" r="6.5" />
-        </svg>
-        <button class="mini-hit" id="mini-tab" type="button" aria-label="Pull the cord to go back"></button>
-      </div>
-    </div>
-    <span class="drawer-sub swatch-cap">Lamp colour</span>
-    <div class="swatches" id="schemes" role="group" aria-label="Lamp colour">
-      <button class="swatch-btn is-on" type="button" data-scheme="amber" aria-pressed="true" style="--dot: hsl(44 78% 56%)"><span class="sr">Amber</span></button>
-      <button class="swatch-btn" type="button" data-scheme="rose" aria-pressed="false" style="--dot: hsl(350 74% 62%)"><span class="sr">Rose</span></button>
-      <button class="swatch-btn" type="button" data-scheme="moss" aria-pressed="false" style="--dot: hsl(150 52% 52%)"><span class="sr">Moss</span></button>
-      <button class="swatch-btn" type="button" data-scheme="ice" aria-pressed="false" style="--dot: hsl(196 82% 60%)"><span class="sr">Ice</span></button>
-    </div>
-    <p class="drawer-note">pull the cord to go back</p>
-  </div>
-</aside>
-
-<!-- guided tour: the spotlight is the only dimming layer, so each target stays legible -->
+<!-- ============================================================
+     TOUR
+     ============================================================ -->
 <div class="tour" id="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-text" aria-hidden="true" hidden>
   <div class="tour-block" id="tour-block" aria-hidden="true"></div>
+  <div class="tour-veil" id="tour-veil" aria-hidden="true"></div>
   <div class="tour-spot" id="tour-spot" aria-hidden="true"></div>
   <section class="tour-panel" id="tour-panel">
-    <p class="tour-kicker" id="tour-step">step 1 of 14</p>
+    <p class="tour-kicker" id="tour-step">Step 1 of 12</p>
     <h2 class="tour-title" id="tour-title"></h2>
     <p class="tour-text" id="tour-text"></p>
     <div class="tour-actions">
-      <button class="tour-skip" id="tour-skip" type="button">skip tour</button>
+      <button class="tour-skip" id="tour-skip" type="button">Skip tour</button>
       <div class="tour-dots" id="tour-dots" aria-hidden="true"></div>
       <div class="tour-buttons">
-        <button class="tour-btn" id="tour-back" type="button">back</button>
-        <button class="tour-btn is-next" id="tour-next" type="button">next</button>
+        <button class="tour-btn" id="tour-back" type="button">Back</button>
+        <button class="tour-btn is-next" id="tour-next" type="button">Next</button>
       </div>
     </div>
   </section>
@@ -572,7 +531,6 @@
 
 <div class="reveal" id="reveal" aria-hidden="true"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
 <script src="elements.js"></script>
 <script src="extended.js"></script>
 <script src="learn-data.js"></script>
@@ -584,6 +542,5 @@
 <script src="sandbox.js"></script>
 <script src="index-page.js"></script>
 <script src="tutorial.js"></script>
-<script src="fx.js"></script>
 </body>
 </html>

@@ -24,7 +24,6 @@
   const resultEl = document.getElementById('sb-result');
   const processEl = document.getElementById('sb-process');
   const resetBtn = document.getElementById('sb-reset');
-  const backBtn = document.getElementById('sandbox-back');
   const scoreEl = document.getElementById('sb-score');
   const fillEl = document.getElementById('sb-progress-fill');
   const progressText = document.getElementById('sb-progress-text');
@@ -258,7 +257,7 @@
 
   const defaultResult = () => {
     resultEl.className = 'sb-result';
-    resultEl.innerHTML = '<p class="sb-result-empty">Place any number of atoms, then combine. Metals with metals make alloys; a metal with a nonmetal makes an ionic compound; nonmetals make curated covalent molecules.</p>';
+    resultEl.innerHTML = '<p class="sb-result-empty">Add a few atoms, then press Combine.</p>';
   };
 
   function paintIdle() {
@@ -608,6 +607,7 @@
     sandbox.hidden = false;
     sandbox.classList.add('is-open');
     sandbox.setAttribute('aria-hidden', 'false');
+    if (window.SciLampNav) window.SciLampNav.setActive('sandbox');
 
     if (!activeChallenge) {
       const next = CHALLENGES.find((c) => !done.includes(c.id));
@@ -641,19 +641,15 @@
     sandbox.classList.remove('is-open');
     sandbox.hidden = true;
     sandbox.setAttribute('aria-hidden', 'true');
+    if (window.SciLampNav) {
+      window.SciLampNav.setActive(pageTable.classList.contains('is-open') ? 'table' : 'home');
+    }
   }
 
   window.scilampOpenSandbox = openSandbox;
   window.scilampCloseSandbox = closeSandbox;
 
   entry.addEventListener('click', openSandbox);
-  backBtn.addEventListener('click', closeSandbox);
-
-  /* any route out of the table page also closes the bench first */
-  document.addEventListener('click', (event) => {
-    if (!open) return;
-    if (event.target.closest('#drawer-table, #drawer-nom, #drawer-index, #drawer-tutorial, #mini-tab')) closeSandbox();
-  }, true);
 
   renderPalette();
   paintBench();

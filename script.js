@@ -1,189 +1,4 @@
-const room = document.getElementById('room');
-const light = document.querySelector('.light');
-const pull = document.getElementById('pull');
-const pullButton = document.getElementById('pull-button');
-const cord = document.querySelector('.pull-cord');
-const tab = document.querySelector('.pull-tab');
-
-const REST = 78;        /* cord hanging length, px */
-const MAX_REACH = 132;  /* hard stop at the end of the cord */
-const FIRE_AT = 126;    /* the switch trips here */
-
-const GRAVITY = 1800;
-const ROPE_K = 700;
-const AIR_DRAG = 4.0;
-
-/* gravity stretches the cord a little, so true rest sits just below REST */
-const EQUILIBRIUM = REST + GRAVITY / ROPE_K;
-
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-let pos = { x: 0, y: EQUILIBRIUM };
-let vel = { x: 0, y: 0 };
-let pivotRect = null;
-let dragging = false;
-let stretchedTo = false;
-let lastMove = { x: 0, y: EQUILIBRIUM, t: 0 };
-let rafId = null;
-let lastFrame = 0;
-
-function flicker() {
-  light.classList.remove('flick');
-  void light.offsetWidth;
-  light.classList.add('flick');
-}
-
-function isLit() {
-  return room.classList.contains('is-lit');
-}
-
-function turnOn() {
-  room.classList.add('is-lit');
-  pullButton.setAttribute('aria-pressed', 'true');
-  pullButton.setAttribute('aria-label', 'Pull the cord to the end to switch the lamp off');
-  flicker();
-}
-
-/* nothing here rewrites visible copy: the fading text must not change mid-fade */
-function turnOff() {
-  room.classList.remove('is-lit');
-  pullButton.setAttribute('aria-pressed', 'false');
-  pullButton.setAttribute('aria-label', 'Pull the cord to the end to turn the lamp on');
-}
-
-function toggle() {
-  isLit() ? turnOff() : turnOn();
-}
-
-/* ---------- drawing ---------- */
-
-function render() {
-  cord.setAttribute('x2', pos.x);
-  cord.setAttribute('y2', pos.y);
-  tab.setAttribute('cx', pos.x);
-  tab.setAttribute('cy', pos.y);
-  pullButton.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
-}
-
-function clampReach(x, y) {
-  const d = Math.hypot(x, y);
-  if (d <= MAX_REACH) return { x, y };
-  const k = MAX_REACH / d;
-  return { x: x * k, y: y * k };
-}
-
-/* ---------- physics ---------- */
-
-function settle() {
-  pos = { x: 0, y: EQUILIBRIUM };
-  vel = { x: 0, y: 0 };
-  pull.classList.remove('armed');
-  render();
-}
-
-function simulate(now) {
-  const dt = Math.min(0.032, (now - lastFrame) / 1000 || 0.016);
-  lastFrame = now;
-
-  const d = Math.hypot(pos.x, pos.y);
-  let ax = 0;
-  let ay = GRAVITY;
-
-  if (d > REST) {
-    const tension = (-ROPE_K * (d - REST)) / d;
-    ax += tension * pos.x;
-    ay += tension * pos.y;
-  }
-
-  ax -= vel.x * AIR_DRAG;
-  ay -= vel.y * AIR_DRAG;
-
-  vel.x += ax * dt;
-  vel.y += ay * dt;
-  pos.x += vel.x * dt;
-  pos.y += vel.y * dt;
-
-  const stretched = Math.hypot(pos.x, pos.y);
-  if (stretched > MAX_REACH) {
-    const hard = clampReach(pos.x, pos.y);
-    pos = hard;
-    vel.x *= 0.4;
-    vel.y *= 0.4;
-  }
-
-  render();
-
-  const settled = Math.abs(pos.x) < 0.5 && Math.abs(pos.y - EQUILIBRIUM) < 0.5 && Math.hypot(vel.x, vel.y) < 8;
-  if (settled) {
-    rafId = null;
-    settle();
-    return;
-  }
-  rafId = requestAnimationFrame(simulate);
-}
-
-function release() {
-  dragging = false;
-  pull.classList.remove('armed');
-
-  /* the switch trips on letting go, never mid-stretch */
-  if (stretchedTo) {
-    stretchedTo = false;
-    toggle();
-  }
-
-  if (reducedMotion) { settle(); return; }
-
-  cancelAnimationFrame(rafId);
-  lastFrame = performance.now();
-  rafId = requestAnimationFrame(simulate);
-}
-
-/* ---------- dragging ---------- */
-
-pullButton.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  cancelAnimationFrame(rafId);
-  rafId = null;
-  pivotRect = pull.getBoundingClientRect();
-  dragging = true;
-  stretchedTo = false;
-  vel = { x: 0, y: 0 };
-  lastMove = { x: pos.x, y: pos.y, t: event.timeStamp };
-  pullButton.setPointerCapture(event.pointerId);
-});
-
-pullButton.addEventListener('pointermove', (event) => {
-  if (!dragging) return;
-
-  const target = clampReach(event.clientX - pivotRect.left, event.clientY - pivotRect.top);
-
-  const atEnd = Math.hypot(target.x, target.y) >= FIRE_AT;
-  if (atEnd) stretchedTo = true;
-  pull.classList.toggle('armed', atEnd);
-
-  /* track speed so a cord dropped mid-flight keeps swinging */
-  const dt = Math.max(0.008, (event.timeStamp - lastMove.t) / 1000);
-  const speed = { x: (target.x - lastMove.x) / dt, y: (target.y - lastMove.y) / dt };
-  const magnitude = Math.hypot(speed.x, speed.y);
-  const cap = magnitude > 2600 ? 2600 / magnitude : 1;
-
-  vel = { x: speed.x * cap, y: speed.y * cap };
-  lastMove = { x: target.x, y: target.y, t: event.timeStamp };
-  pos = target;
-  render();
-});
-
-pullButton.addEventListener('pointerup', release);
-pullButton.addEventListener('pointercancel', release);
-
-/* keyboard only — a plain click must never switch the lamp */
-pullButton.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' || event.code === 'Space') {
-    event.preventDefault();
-    toggle();
-  }
-});
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
@@ -191,9 +6,11 @@ document.addEventListener('keydown', (event) => {
   /* the tour owns Escape while it is up, so one press cannot dismiss two layers */
   if (window.scilampTutorialOpen) return;
 
+  if (helpVisible) { closeHelp(); return; }
+
   if (detail.classList.contains('is-open')) { closeDetail(); return; }
 
-  if (drawerOpen()) { closeDrawer(); return; }
+  if (navMenuOpen()) { closeNavMenu({ restoreFocus: true }); return; }
 
   if (window.scilampSandboxOpen) {
     if (window.scilampCloseSandbox) window.scilampCloseSandbox();
@@ -201,19 +18,21 @@ document.addEventListener('keydown', (event) => {
   }
 
   const open = document.querySelector('.page.is-open');
-  if (open) {
-    const key = open.id.slice('page-'.length);
-    const { x, y } = pageOrigin();
-    closePage(key, x, y);
-    return;
-  }
-  if (isLit()) turnOff();
+  if (!open) return;
+  const key = open.id.slice('page-'.length);
+  const { x, y } = pageOrigin();
+  closePage(key, x, y);
 });
 
 /* ---------- periodic table page ---------- */
 
 const REVEAL_MS = 640;
 const reveal = document.getElementById('reveal');
+const navHome = document.getElementById('nav-home');
+const navMore = document.getElementById('nav-more');
+const navMenu = document.getElementById('nav-menu');
+const navSettings = document.getElementById('nav-settings');
+const topnavLinks = [...document.querySelectorAll('.topnav-link')];
 let transitioning = false;
 let pendingMode = null;   /* a shape picked from the menu before the page exists */
 let pendingSandbox = false;   /* the sandbox was asked for from another page */
@@ -369,7 +188,7 @@ let sheetClosing = false;
 /* the sheet sits above every page; everything behind it is made inert for as long
    as it is up, and every part gets its previous value back on close.  The tutorial
    is deliberately left alone so its controls keep working while a step shows a card. */
-const QUIET_PARTS = '.room, .page, .sandbox, .drawer, .menu-tab, .scrim, .reveal';
+const QUIET_PARTS = '.cover, .page, .sandbox, .topbar, .help, .reveal';
 let quietSaved = null;
 
 function silencePage(quiet) {
@@ -542,16 +361,16 @@ function fillProductSheet(product, mode) {
   facts.name.textContent = product.name;
   facts.mass.textContent = molar ? `${molar} u per formula unit` : 'variable composition';
 
-  facts.title.textContent = `${product.formula} — ${product.name}`;
+  facts.title.textContent = mode === 'created' ? product.name : `${product.formula} — ${product.name}`;
   const bits = [kind];
   if (product.ratio) bits.push(SB.ratioText(product.ratio));
   if (product.units > 1) bits.push(`${product.units} formula units`);
   facts.sub.textContent = bits.join(' · ');
 
   facts.desc.textContent = mode === 'created' ? (product.why || product.description) : (product.description || product.why);
-  facts.note.hidden = false;
+  facts.note.hidden = mode === 'created';
   facts.note.textContent = mode === 'created'
-    ? (product.formation || '')
+    ? ''
     : [product.why, product.formation].filter(Boolean).join(' ');
 
   const rows = [
@@ -578,9 +397,8 @@ function fillProductSheet(product, mode) {
   facts.actions.hidden = false;
   if (mode === 'created') {
     facts.actions.innerHTML = `
-      <span class="sheet-saved"><span aria-hidden="true">✓</span> Saved to my products</span>
+      <span class="sheet-saved"><span aria-hidden="true">✓</span> Saved</span>
       <button class="sheet-btn" type="button" data-sheet-action="details">full details</button>
-      <button class="sheet-btn" type="button" data-sheet-action="shelf">my products</button>
       <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
   } else {
     facts.actions.innerHTML = `
@@ -719,8 +537,8 @@ function closeDetail() {
     if (window.scilampTutorialOpen) return;
     if (back && document.contains(back) && back.getClientRects().length) {
       back.focus({ preventScroll: true });
-    } else {
-      menuTab.focus({ preventScroll: true });
+    } else if (navHome) {
+      navHome.focus({ preventScroll: true });
     }
   };
 
@@ -810,13 +628,15 @@ function buildTable() {
 
   document.getElementById('table').append(frag);
 
+  const LEGEND_LABEL = { e: 'alkaline earth', p: 'post-transition', u: 'unknown' };
   Object.entries(CATEGORIES).forEach(([key, label]) => {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'legend-item';
     item.dataset.cat = key;
     item.setAttribute('aria-pressed', 'false');
-    item.innerHTML = `<span class="legend-dot"></span>${label}`;
+    item.setAttribute('aria-label', `Filter ${label} elements`);
+    item.innerHTML = `<span class="legend-dot"></span>${LEGEND_LABEL[key] || label}`;
     item.addEventListener('click', () => {
       if (catFilter.has(key)) catFilter.delete(key);
       else catFilter.add(key);
@@ -857,13 +677,16 @@ function openPage(key, x, y) {
   setTimeout(() => {
     page.classList.add('is-open');
     page.removeAttribute('aria-hidden');
+    setActiveNav(key);
+    cover.inert = true;
+    cover.setAttribute('aria-hidden', 'true');
     document.body.classList.add('page-open');
     reveal.classList.remove('animate', 'active');
     setCircle(x, y, 0);
     transitioning = false;
     page.focus({ preventScroll: true });
     if (key === 'table') {
-      placeGoo();
+      syncArrange(arrangement);
       relayout();
       if (pendingMode) {
         const picked = pendingMode;
@@ -894,7 +717,8 @@ function closePage(key, x, y) {
   void reveal.offsetWidth;
 
   page.classList.remove('is-open');
-  if (page.contains(document.activeElement)) menuTab?.focus({ preventScroll: true });
+  setActiveNav('home');
+  if (page.contains(document.activeElement)) navHome?.focus({ preventScroll: true });
   page.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('page-open');
 
@@ -906,7 +730,9 @@ function closePage(key, x, y) {
   setTimeout(() => {
     reveal.classList.remove('animate', 'active');
     transitioning = false;
-    menuTab?.focus();
+    cover.inert = false;
+    cover.removeAttribute('aria-hidden');
+    navHome?.focus({ preventScroll: true });
   }, reducedMotion ? 0 : REVEAL_MS);
 }
 
@@ -915,9 +741,13 @@ function cardCentre(card) {
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 }
 
-/* the section buttons live in the drawer, so the reveal always grows from the menu tab */
 function pageOrigin() {
-  return cardCentre(menuTab);
+  return cardCentre(navHome);
+}
+
+function navOrigin(key) {
+  const link = document.querySelector(`.topnav-link[data-nav="${key}"]`);
+  return cardCentre(link || navHome);
 }
 
 /* switch pages without leaving a second one open, and without leaving the sandbox
@@ -929,7 +759,7 @@ function showPage(key) {
   }
   if (window.scilampSandboxOpen && window.scilampCloseSandbox) window.scilampCloseSandbox();
   if (detail.classList.contains('is-open') && !sheetClosing) closeDetail();
-  closeDrawer();
+  closeNavMenu();
 
   const current = document.querySelector('.page.is-open');
   if (current && current.id === `page-${key}`) return;
@@ -937,7 +767,7 @@ function showPage(key) {
     current.classList.remove('is-open');
     current.setAttribute('aria-hidden', 'true');
   }
-  const { x, y } = pageOrigin();
+  const { x, y } = navOrigin(key);
   openPage(key, x, y);
 }
 
@@ -962,6 +792,7 @@ const MORPH_MS = 900;
 const MORPH_WAVE = 0.35;      /* part of the morph spent starting the tiles one after another */
 
 const DEG = Math.PI / 180;
+const cover = document.getElementById('cover');
 const pageTable = document.getElementById('page-table');
 const stageView = document.getElementById('stage');
 const stageBoard = document.getElementById('table');
@@ -1568,7 +1399,7 @@ function setMode(name) {
   const built = build(name);
 
   arrangement = name;
-  setNav(name);
+  syncArrange(name);
   pageTable.classList.remove('arriving');
   if (glideRAF) { cancelAnimationFrame(glideRAF); glideRAF = null; }
   spinVel = 0;
@@ -1624,187 +1455,34 @@ detail.addEventListener('keydown', (event) => {
   }
 });
 
-render();
-
-/* ---------- the menu: a drawer with a lamp of its own, already lit ---------- */
+/* ---------- the top bar: primary sections, one quiet menu ---------- */
 
 const SENS = { turn: 1, zoom: 1 };
+const arrangeButtons = [...document.querySelectorAll('#arrange .arrange-btn')];
+const settingsToggle = document.getElementById('nav-settings-toggle');
+const helpEl = document.getElementById('help');
+const helpClose = document.getElementById('help-close');
+const helpDone = document.getElementById('help-done');
+const helpZone = document.getElementById('help-zone');
+let helpReturn = null;
+let helpVisible = false;
 
-const menuTab = document.getElementById('menu-tab');
-const scrim = document.getElementById('scrim');
-const drawer = document.getElementById('drawer');
-const settingsPane = drawer.querySelector('.drawer-pane[data-pane="settings"]');
-const gearBtn = document.getElementById('drawer-gear');
-const tableBtn = document.getElementById('drawer-table');
-const nomBtn = document.getElementById('drawer-nom');
-const nomBack = document.getElementById('nom-back');
-const navItems = [...document.querySelectorAll('#goo-nav .goo-item')];
-const gooDot = document.getElementById('goo-dot');
-const gooPop = document.getElementById('goo-pop');
-const GOO_DOT = 54;   /* must match the bubble sizes in the stylesheet */
-const GOO_POP = 46;
-let navSel = 'table';
-
-const miniRoom = document.getElementById('mini-room');
-const miniPull = document.getElementById('mini-pull');
-const miniTab = document.getElementById('mini-tab');
-const miniCord = miniPull.querySelector('.mini-cord');
-const miniDot = miniPull.querySelector('.mini-dot');
-
-/* the cord is measured in the panel's own scale, because a fixed pixel length would
-   be a whip in a small box and a stub in a tall one; the swing itself is the main
-   cord's physics unchanged — gravity, rope tension, air, and a switch at full stretch */
-const mini = { rest: 34, max: 62, fire: 58 };
-const miniRest = () => mini.rest + GRAVITY / ROPE_K;
-
-const miniState = { x: 0, y: 0, vx: 0, vy: 0, raf: null, last: 0, drag: null, stretched: false, pivot: null, lastMove: null };
-
-function drawMini() {
-  miniCord.setAttribute('x2', miniState.x.toFixed(1));
-  miniCord.setAttribute('y2', miniState.y.toFixed(1));
-  miniDot.setAttribute('cx', miniState.x.toFixed(1));
-  miniDot.setAttribute('cy', miniState.y.toFixed(1));
-  miniTab.style.transform = `translate(${miniState.x.toFixed(1)}px, ${miniState.y.toFixed(1)}px)`;
+function setActiveNav(key) {
+  topnavLinks.forEach((link) => {
+    const on = link.dataset.nav === key;
+    link.classList.toggle('is-active', on);
+    if (on) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
 }
 
-function measureMini() {
-  if (!miniRoom.offsetWidth) return;   /* the foot is hidden on the lamp page */
-  const h = miniRoom.getBoundingClientRect().height || 230;
-  mini.rest = h * 0.15;
-  mini.max = h * 0.28;
-  mini.fire = h * 0.255;
-  if (miniState.drag) return;
-  miniState.x = 0;
-  miniState.y = miniRest();
-  miniState.vx = 0;
-  miniState.vy = 0;
-  drawMini();
-}
-
-function miniFrame(now) {
-  const dt = Math.min(0.032, (now - miniState.last) / 1000 || 0.016);
-  miniState.last = now;
-
-  const d = Math.hypot(miniState.x, miniState.y);
-  let ax = 0;
-  let ay = GRAVITY;
-  if (d > mini.rest) {
-    const tension = (-ROPE_K * (d - mini.rest)) / d;
-    ax += tension * miniState.x;
-    ay += tension * miniState.y;
-  }
-  ax -= miniState.vx * AIR_DRAG;
-  ay -= miniState.vy * AIR_DRAG;
-
-  miniState.vx += ax * dt;
-  miniState.vy += ay * dt;
-  miniState.x += miniState.vx * dt;
-  miniState.y += miniState.vy * dt;
-
-  const stretched = Math.hypot(miniState.x, miniState.y);
-  if (stretched > mini.max) {
-    const k = mini.max / stretched;
-    miniState.x *= k;
-    miniState.y *= k;
-    miniState.vx *= 0.4;
-    miniState.vy *= 0.4;
-  }
-
-  drawMini();
-
-  const home = miniRest();
-  const settled = Math.abs(miniState.x) < 0.5 && Math.abs(miniState.y - home) < 0.5 && Math.hypot(miniState.vx, miniState.vy) < 8;
-  if (settled) {
-    miniState.raf = null;
-    miniState.x = 0;
-    miniState.y = home;
-    miniState.vx = 0;
-    miniState.vy = 0;
-    drawMini();
-    return;
-  }
-  miniState.raf = requestAnimationFrame(miniFrame);
-}
-
-function miniRelease() {
-  miniState.drag = null;
-  miniPull.classList.remove('armed');
-
-  /* the way out trips on letting go, never mid-stretch */
-  if (miniState.stretched) {
-    miniState.stretched = false;
-    backToMenu();
-  }
-
-  if (reducedMotion) {
-    cancelAnimationFrame(miniState.raf);
-    miniState.raf = null;
-    miniState.x = 0;
-    miniState.y = miniRest();
-    miniState.vx = 0;
-    miniState.vy = 0;
-    drawMini();
-    return;
-  }
-  cancelAnimationFrame(miniState.raf);
-  miniState.last = performance.now();
-  miniState.raf = requestAnimationFrame(miniFrame);
-}
-
-miniTab.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  cancelAnimationFrame(miniState.raf);
-  miniState.raf = null;
-  miniState.pivot = miniPull.getBoundingClientRect();
-  miniState.drag = event.pointerId;
-  miniState.stretched = false;
-  miniState.vx = 0;
-  miniState.vy = 0;
-  miniState.lastMove = { x: miniState.x, y: miniState.y, t: event.timeStamp };
-  miniTab.setPointerCapture(event.pointerId);
-});
-
-miniTab.addEventListener('pointermove', (event) => {
-  if (miniState.drag !== event.pointerId) return;
-
-  const raw = { x: event.clientX - miniState.pivot.left, y: event.clientY - miniState.pivot.top };
-  const rd = Math.hypot(raw.x, raw.y);
-  const target = rd <= mini.max ? raw : { x: (raw.x * mini.max) / rd, y: (raw.y * mini.max) / rd };
-
-  const atEnd = Math.hypot(target.x, target.y) >= mini.fire;
-  if (atEnd) miniState.stretched = true;
-  miniPull.classList.toggle('armed', atEnd);
-
-  /* track speed so a cord dropped mid-flight keeps swinging */
-  const dt = Math.max(0.008, (event.timeStamp - miniState.lastMove.t) / 1000);
-  const speed = { x: (target.x - miniState.lastMove.x) / dt, y: (target.y - miniState.lastMove.y) / dt };
-  const magnitude = Math.hypot(speed.x, speed.y);
-  const cap = magnitude > 2600 ? 2600 / magnitude : 1;
-
-  miniState.vx = speed.x * cap;
-  miniState.vy = speed.y * cap;
-  miniState.lastMove = { x: target.x, y: target.y, t: event.timeStamp };
-  miniState.x = target.x;
-  miniState.y = target.y;
-  drawMini();
-});
-
-miniTab.addEventListener('pointerup', miniRelease);
-miniTab.addEventListener('pointercancel', miniRelease);
-
-miniTab.addEventListener('keydown', (event) => {
-  if (event.key !== 'Enter' && event.code !== 'Space') return;
-  event.preventDefault();
-  backToMenu();
-});
-
-/* the drawer is the way back out of everything, so its cord closes every layer too */
+/* the top bar is the way back out of everything */
 function backToMenu() {
-  closeDrawer();
+  closeNavMenu();
   if (window.scilampSandboxOpen && window.scilampCloseSandbox) window.scilampCloseSandbox();
   if (detail.classList.contains('is-open')) closeDetail();
   const open = document.querySelector('.page.is-open');
-  if (!open) return;
+  if (!open) { setActiveNav('home'); return; }
   const key = open.id.slice('page-'.length);
   const { x, y } = pageOrigin();
   closePage(key, x, y);
@@ -1816,10 +1494,11 @@ function openSandboxFromNav({ shelf = false } = {}) {
     return;
   }
   if (detail.classList.contains('is-open')) closeDetail();
-  closeDrawer();
+  closeNavMenu();
 
   const start = () => {
     if (window.scilampOpenSandbox) window.scilampOpenSandbox();
+    setActiveNav('sandbox');
     if (shelf && window.scilampShowShelf) window.scilampShowShelf();
   };
 
@@ -1831,110 +1510,201 @@ function openSandboxFromNav({ shelf = false } = {}) {
     current.setAttribute('aria-hidden', 'true');
   }
   pendingSandbox = true;
-  const { x, y } = pageOrigin();
+  const { x, y } = navOrigin('sandbox');
   openPage('table', x, y);
 }
 
-function drawerOpen() {
-  return drawer.classList.contains('is-open');
+/* ---------- the more menu ---------- */
+
+function navMenuOpen() {
+  return !!navMenu && !navMenu.hidden;
 }
 
-function openDrawer() {
-  if (drawerOpen()) return;
-  drawer.classList.add('is-open');
-  drawer.removeAttribute('aria-hidden');
-  scrim.classList.add('is-on');
-  menuTab.setAttribute('aria-expanded', 'true');
-  /* the nav bubble reflects where you are: the shape you are looking at, or the
-     flat table when nothing is open yet */
-  setNav(document.querySelector('.page.is-open') ? arrangement : 'table');
-  measureMini();
+function menuItems() {
+  return navMenu ? [...navMenu.querySelectorAll('.nav-menu-item')] : [];
 }
 
-function closeDrawer() {
-  if (!drawerOpen()) return;
-  drawer.classList.remove('is-open');
-  if (drawer.contains(document.activeElement)) menuTab.focus({ preventScroll: true });
-  drawer.setAttribute('aria-hidden', 'true');
-  scrim.classList.remove('is-on');
-  menuTab.setAttribute('aria-expanded', 'false');
-}
-
-menuTab.addEventListener('click', () => (drawerOpen() ? closeDrawer() : openDrawer()));
-scrim.addEventListener('click', closeDrawer);
-document.getElementById('drawer-close').addEventListener('click', closeDrawer);
-
-/* the gear unfolds the settings section in place; the table button is the way in */
 function setSettings(open) {
-  settingsPane.hidden = !open;
-  settingsPane.classList.toggle('is-on', open);
-  gearBtn.setAttribute('aria-expanded', String(open));
+  if (!navSettings) return;
+  navSettings.hidden = !open;
+  navSettings.classList.toggle('is-on', open);
+  settingsToggle.setAttribute('aria-expanded', String(open));
 }
 
-gearBtn.addEventListener('click', () => setSettings(settingsPane.hidden));
+function openNavMenu({ focusFirst = false } = {}) {
+  if (!navMenu || navMenuOpen()) return;
+  if (helpVisible) closeHelp();
+  navMenu.hidden = false;
+  navMore.setAttribute('aria-expanded', 'true');
+  if (focusFirst) requestAnimationFrame(() => menuItems()[0]?.focus({ preventScroll: true }));
+}
 
-/* each section button opens its page from the drawer, closing whatever was up */
-tableBtn.addEventListener('click', () => openKey('table'));
-nomBtn.addEventListener('click', () => openKey('nom'));
-nomBack.addEventListener('click', backToMenu);
+function closeNavMenu({ restoreFocus = false } = {}) {
+  if (!navMenuOpen()) return;
+  const hadFocus = navMenu.contains(document.activeElement);
+  navMenu.hidden = true;
+  navMore.setAttribute('aria-expanded', 'false');
+  setSettings(false);
+  if (restoreFocus && hadFocus) navMore.focus({ preventScroll: true });
+  else if (hadFocus && document.activeElement) document.activeElement.blur();
+}
 
-/* the panel is measured again once it finishes sliding in, because a viewport
-   that was asleep while it opened can hand back half-baked widths */
-drawer.addEventListener('transitionend', (event) => {
-  if (event.propertyName !== 'transform' || !drawerOpen()) return;
-  measureMini();
+navMore.addEventListener('click', () => {
+  if (navMenuOpen()) closeNavMenu({ restoreFocus: true });
+  else openNavMenu({ focusFirst: true });
 });
 
-/* the raised bubble follows the active item; the bar and the bubble are one
-   blurred body, so the neck between them stays gooey while it travels */
-function placeGoo() {
-  const active = navItems.find((b) => b.dataset.nav === navSel && b.offsetWidth);
-  if (!active) return;
-  const cx = active.offsetLeft + active.offsetWidth / 2;
-  gooDot.style.transform = `translateX(${(cx - GOO_DOT / 2).toFixed(1)}px)`;
-  gooPop.style.transform = `translateX(${(cx - GOO_POP / 2).toFixed(1)}px)`;
-}
-
-function setNav(name) {
-  navSel = name;
-  navItems.forEach((b) => {
-    const on = b.dataset.nav === name;
-    b.classList.toggle('is-on', on);
-    b.setAttribute('aria-pressed', String(on));
-  });
-  placeGoo();
-}
-
-navItems.forEach((button) => button.addEventListener('click', () => {
-  const name = button.dataset.nav;
-  if (name === 'lamp') { backToMenu(); return; }
-
-  setNav(name);
-  if (document.querySelector('.page.is-open')) {
-    setMode(name);
-  } else {
-    pendingMode = name;
-    const { x, y } = pageOrigin();
-    openPage('table', x, y);
+navMore.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    openNavMenu({ focusFirst: true });
   }
-}));
+});
 
-function pickGroup(selector, apply) {
-  const buttons = [...document.querySelectorAll(selector)];
-  buttons.forEach((button) => {
-    button.addEventListener('click', () => {
-      apply(button);
-      buttons.forEach((b) => {
-        const on = b === button;
-        b.classList.toggle('is-on', on);
-        b.setAttribute('aria-pressed', String(on));
-      });
-    });
+navMenu.addEventListener('keydown', (event) => {
+  const items = menuItems();
+  const at = items.indexOf(document.activeElement);
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeNavMenu({ restoreFocus: true });
+    return;
+  }
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (!items.length) return;
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    items[(at + step + items.length) % items.length].focus({ preventScroll: true });
+  }
+});
+
+document.addEventListener('pointerdown', (event) => {
+  if (!navMenuOpen()) return;
+  if (!document.getElementById('topbar-more').contains(event.target)) closeNavMenu();
+});
+
+settingsToggle.addEventListener('click', () => {
+  const open = navSettings.hidden;
+  setSettings(open);
+  if (open) requestAnimationFrame(() => document.getElementById('sens-turn').focus({ preventScroll: true }));
+});
+
+navMenu.querySelector('[data-menu="tutorial"]').addEventListener('click', () => {
+  closeNavMenu();
+  if (window.scilampStartTutorial) window.scilampStartTutorial();
+});
+
+navMenu.querySelector('[data-menu="help"]').addEventListener('click', () => {
+  openHelp(navMore);
+});
+
+/* ---------- help ---------- */
+
+function openHelp(trigger) {
+  if (!helpEl || helpVisible) return;
+  helpVisible = true;
+  helpReturn = trigger || document.activeElement;
+  closeNavMenu();
+  helpEl.hidden = false;
+  helpEl.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => helpEl.classList.add('is-on'));
+  setTimeout(() => {
+    if (helpVisible) helpClose.focus({ preventScroll: true });
+  }, reducedMotion ? 0 : 40);
+}
+
+function closeHelp() {
+  if (!helpVisible) return;
+  helpVisible = false;
+  helpEl.classList.remove('is-on');
+  helpEl.setAttribute('aria-hidden', 'true');
+  window.setTimeout(() => { helpEl.hidden = true; }, reducedMotion ? 0 : 240);
+  const back = helpReturn;
+  helpReturn = null;
+  if (back && document.contains(back) && back.getClientRects().length) back.focus({ preventScroll: true });
+}
+
+helpClose.addEventListener('click', closeHelp);
+helpDone.addEventListener('click', closeHelp);
+helpZone.addEventListener('click', closeHelp);
+
+helpEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeHelp();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+  const items = [...helpEl.querySelectorAll('button, [href], input, select, textarea')]
+    .filter((el) => !el.disabled && el.tabIndex !== -1 && el.getClientRects().length);
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
+
+document.getElementById('sb-help')?.addEventListener('click', (event) => openHelp(event.currentTarget));
+
+/* ---------- section links ---------- */
+
+topnavLinks.forEach((link) => {
+  link.addEventListener('click', () => {
+    closeNavMenu();
+    const key = link.dataset.nav;
+    if (key === 'sandbox') openSandboxFromNav();
+    else showPage(key);
+  });
+});
+
+navHome.addEventListener('click', backToMenu);
+
+setActiveNav('home');
+
+/* cover cards and hero buttons are the front door */
+function openFromCover(trigger, key) {
+  if (transitioning) return;
+  const box = trigger.getBoundingClientRect();
+  openPage(key, box.left + box.width / 2, box.top + box.height / 2);
+}
+
+document.querySelectorAll('[data-open]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const dest = button.dataset.open;
+    if (dest === 'tutorial') {
+      if (window.scilampStartTutorial) window.scilampStartTutorial();
+    } else if (dest === 'sandbox') {
+      openSandboxFromNav();
+    } else {
+      openFromCover(button, dest);
+    }
+  });
+});
+
+function syncArrange(name) {
+  arrangeButtons.forEach((button) => {
+    const on = button.dataset.nav === name;
+    button.classList.toggle('is-on', on);
+    button.setAttribute('aria-pressed', String(on));
   });
 }
 
-pickGroup('[data-scheme]', (b) => { document.documentElement.dataset.scheme = b.dataset.scheme; });
-pickGroup('[data-theme]', (b) => { document.documentElement.dataset.theme = b.dataset.theme; });
+arrangeButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const name = button.dataset.nav;
+    if (!document.querySelector('.page.is-open')) {
+      pendingMode = name;
+      const { x, y } = pageOrigin();
+      openPage('table', x, y);
+      return;
+    }
+    setMode(name);
+  });
+});
 
 function bindSens(id, key) {
   const input = document.getElementById(id);
@@ -1950,16 +1720,7 @@ function bindSens(id, key) {
 bindSens('sens-turn', 'turn');
 bindSens('sens-zoom', 'zoom');
 
-let winResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(winResizeTimer);
-  winResizeTimer = setTimeout(() => {
-    measureMini();
-    if (pageTable.classList.contains('is-open')) placeGoo();
-  }, 150);
-});
-setNav('table');
-measureMini();
+syncArrange('table');
 
 /* small public surface for the sandbox, the index and the tour */
 window.SciLampSheet = {
@@ -1972,8 +1733,10 @@ window.SciLampSheet = {
 window.SciLampNav = {
   page: showPage,
   home: backToMenu,
-  drawer: (open) => (open ? openDrawer() : closeDrawer()),
-  settings: (open) => setSettings(Boolean(open)),
+  menu: (open) => (open ? openNavMenu() : closeNavMenu()),
+  settings: (open) => { if (open) openNavMenu(); setSettings(Boolean(open)); },
+  help: () => openHelp(navMore),
+  setActive: setActiveNav,
   openSandbox: openSandboxFromNav,
   index: () => showPage('index'),
   tutorial: () => { if (window.scilampStartTutorial) window.scilampStartTutorial(); },

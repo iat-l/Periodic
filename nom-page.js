@@ -119,8 +119,36 @@
 
   /* ---------- docs ---------- */
 
+  function closeDocs(except) {
+    docsList.querySelectorAll('.doc-sec').forEach((section) => {
+      const on = section === except;
+      section.classList.toggle('is-open', on);
+      const toggle = section.querySelector('.doc-toggle');
+      const body = section.querySelector('.doc-body');
+      if (!toggle || !body) return;
+      toggle.setAttribute('aria-expanded', String(on));
+      body.hidden = !on;
+    });
+    docsNav.querySelectorAll('.docs-chip').forEach((chip) => {
+      const on = !!except && chip.dataset.doc === except.id.slice('doc-'.length);
+      chip.classList.toggle('is-on', on);
+      chip.setAttribute('aria-pressed', String(on));
+    });
+  }
+
+  function openDoc(id, { scroll = false } = {}) {
+    const section = document.getElementById(`doc-${id}`);
+    if (!section) return;
+    closeDocs(section);
+    if (scroll) {
+      requestAnimationFrame(() => {
+        section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      });
+    }
+  }
+
   function renderDocs() {
-    docsList.innerHTML = NOM_DOCS.map((doc) => {
+    docsList.innerHTML = NOM_DOCS.map((doc, i) => {
       const rules = doc.rules.map((rule) => `<li>${rule}</li>`).join('');
       const examples = doc.examples.map((ex) => `
         <div class="doc-ex">
@@ -130,12 +158,29 @@
           ${ex.note ? `<span class="doc-ex-note">${ex.note}</span>` : ''}
         </div>`).join('');
       return `
-        <section class="doc-sec" id="doc-${doc.id}" aria-labelledby="doc-h-${doc.id}">
-          <h3 id="doc-h-${doc.id}">${doc.title}</h3>
-          <ul class="doc-rules">${rules}</ul>
-          <div class="doc-examples">${examples}</div>
+        <section class="doc-sec" id="doc-${doc.id}">
+          <h3 class="doc-head">
+            <button class="doc-toggle" id="doc-h-${doc.id}" type="button"
+              aria-expanded="false" aria-controls="doc-body-${doc.id}">
+              <span class="doc-num">${String(i + 1).padStart(2, '0')}</span>
+              <span class="doc-title">${doc.title}</span>
+              <span class="doc-chevron" aria-hidden="true"></span>
+            </button>
+          </h3>
+          <div class="doc-body" id="doc-body-${doc.id}" role="region" aria-labelledby="doc-h-${doc.id}" hidden>
+            <ul class="doc-rules">${rules}</ul>
+            <div class="doc-examples">${examples}</div>
+          </div>
         </section>`;
     }).join('');
+
+    docsList.querySelectorAll('.doc-sec').forEach((section) => {
+      const toggle = section.querySelector('.doc-toggle');
+      toggle.addEventListener('click', () => {
+        if (section.classList.contains('is-open')) closeDocs(null);
+        else openDoc(section.id.slice('doc-'.length), { scroll: true });
+      });
+    });
 
     docsNav.innerHTML = NOM_DOCS.map((doc, i) => `
       <button class="docs-chip" type="button" data-doc="${doc.id}" aria-pressed="false">
@@ -148,14 +193,7 @@
           docsSearch.value = '';
           filterDocs('');
         }
-        const section = document.getElementById(`doc-${chip.dataset.doc}`);
-        if (!section) return;
-        section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-        docsNav.querySelectorAll('.docs-chip').forEach((c) => {
-          const on = c === chip;
-          c.classList.toggle('is-on', on);
-          c.setAttribute('aria-pressed', String(on));
-        });
+        openDoc(chip.dataset.doc, { scroll: true });
       });
     });
 
@@ -165,27 +203,27 @@
   function filterDocs(query) {
     const q = query.trim().toLowerCase();
     let matches = 0;
+    let firstMatch = null;
     docsList.querySelectorAll('.doc-sec').forEach((section) => {
       const text = section.textContent.toLowerCase();
       const hit = !q || text.includes(q);
       section.hidden = !hit;
-      if (hit) matches += 1;
+      if (hit) {
+        matches += 1;
+        if (!firstMatch) firstMatch = section;
+      }
     });
 
     if (!q) {
-      docsStatus.textContent = `${NOM_DOCS.length} sections — type to filter, or jump with the list above.`;
+      docsStatus.textContent = `${NOM_DOCS.length} short rules · open one at a time.`;
     } else if (matches) {
       docsStatus.textContent = `${matches} section${matches === 1 ? '' : 's'} match “${query.trim()}”.`;
     } else {
-      docsStatus.textContent = `No sections match “${query.trim()}”. Try “ion”, “acid” or “prefix”.`;
+      docsStatus.textContent = `No sections match “${query.trim()}”. Try “ion” or “acid”.`;
+      closeDocs(null);
     }
 
-    if (q) {
-      docsNav.querySelectorAll('.docs-chip').forEach((c) => {
-        c.classList.remove('is-on');
-        c.setAttribute('aria-pressed', 'false');
-      });
-    }
+    if (q && firstMatch) openDoc(firstMatch.id.slice('doc-'.length));
   }
 
   /* ---------- paths ---------- */
