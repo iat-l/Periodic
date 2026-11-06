@@ -51,10 +51,10 @@ const HEAT_PROPS = {
   ie1: { label: 'Ionisation energy', unit: 'kJ/mol', fmt: (v) => String(Math.round(v)) },
 };
 
-/* RdYlBu reversed: deep blue for the lowest value through to red for the highest */
+/* pastel to ink: mint, celadon, powder blue, lavender, blush, mauve, plum */
 const HEAT_STOPS = [
-  [49, 54, 149], [69, 117, 180], [116, 173, 209], [171, 217, 233],
-  [224, 243, 248], [254, 224, 144], [253, 174, 97], [244, 109, 67], [215, 48, 39],
+  [242, 249, 244], [220, 239, 227], [217, 234, 246], [230, 225, 244],
+  [247, 224, 221], [201, 155, 159], [61, 40, 51],
 ];
 
 function heatRgb(t) {
@@ -66,10 +66,18 @@ function heatRgb(t) {
   return [0, 1, 2].map((j) => Math.round(a[j] + (b[j] - a[j]) * f));
 }
 
-/* the middle of the scale is pale, both ends are dark, so the ink flips with luminance */
+/* compare true relative luminance, not raw channel weight, so amber keeps
+   black ink and the hot vermilions flip to white */
+function relLuminance(rgb) {
+  const channel = (v) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2]);
+}
+
 function heatInk(rgb) {
-  const lum = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
-  return lum > 150 ? '#101c28' : '#eef7ff';
+  return relLuminance(rgb) > 0.22 ? '#191612' : '#fbfaf6';
 }
 
 /* oxidation states and room-temperature states are curated in elements.js,
