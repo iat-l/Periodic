@@ -51,18 +51,28 @@ const HEAT_PROPS = {
   ie1: { label: 'Ionisation energy', unit: 'kJ/mol', fmt: (v) => String(Math.round(v)) },
 };
 
-/* pastel to ink: mint, celadon, powder blue, lavender, blush, mauve, plum */
-const HEAT_STOPS = [
-  [242, 249, 244], [220, 239, 227], [217, 234, 246], [230, 225, 244],
-  [247, 224, 221], [201, 155, 159], [61, 40, 51],
+/* one sequential red ramp per theme, matching --heat-step-1..7 */
+const HEAT_STOPS_LIGHT = [
+  [242, 241, 237], [247, 217, 213], [240, 189, 182], [233, 151, 140],
+  [224, 106, 92], [214, 63, 49], [184, 31, 21],
 ];
 
+const HEAT_STOPS_DARK = [
+  [20, 20, 20], [42, 23, 21], [74, 28, 23], [113, 33, 26],
+  [163, 42, 31], [216, 52, 38], [255, 59, 47],
+];
+
+function heatStops() {
+  return document.documentElement.dataset.theme === 'dark' ? HEAT_STOPS_DARK : HEAT_STOPS_LIGHT;
+}
+
 function heatRgb(t) {
-  const k = Math.min(1, Math.max(0, t)) * (HEAT_STOPS.length - 1);
-  const i = Math.min(Math.floor(k), HEAT_STOPS.length - 2);
+  const stops = heatStops();
+  const k = Math.min(1, Math.max(0, t)) * (stops.length - 1);
+  const i = Math.min(Math.floor(k), stops.length - 2);
   const f = k - i;
-  const a = HEAT_STOPS[i];
-  const b = HEAT_STOPS[i + 1];
+  const a = stops[i];
+  const b = stops[i + 1];
   return [0, 1, 2].map((j) => Math.round(a[j] + (b[j] - a[j]) * f));
 }
 
@@ -77,7 +87,7 @@ function relLuminance(rgb) {
 }
 
 function heatInk(rgb) {
-  return relLuminance(rgb) > 0.22 ? '#191612' : '#fbfaf6';
+  return relLuminance(rgb) > 0.22 ? '#0a0a0a' : '#f5f4ef';
 }
 
 /* oxidation states and room-temperature states are curated in elements.js,

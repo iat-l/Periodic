@@ -25,6 +25,8 @@
   if (!tour || !block || !spot || !panel) return;
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const I18N = window.SciLampI18n;
+  const t = (en, zh) => I18N?.t(en, zh) ?? en;
   const body = document.body;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const pause = (ms) => new Promise((resolve) => setTimeout(resolve, reduceMotion ? 0 : ms));
@@ -137,7 +139,7 @@
 
   const STEPS = [
     {
-      title: 'Welcome to Sci-lamp',
+      title: 'Welcome to Sci-lab',
       text: 'A short tour of the whole site: the table, the bench and the notebook. Use Next, Back or the arrow keys. Skip leaves the tour at any time.',
       prepare: goHome,
     },
@@ -149,7 +151,7 @@
     },
     {
       title: 'One top bar, four sections',
-      text: 'The table, sandbox, nomenclature and index stay one tap away. The current section is marked, so you always know where you are.',
+      text: 'The table, sandbox, courses and index stay one tap away. The current section is marked, so you always know where you are.',
       target: '#topnav-links',
       prepare: goHome,
     },
@@ -185,14 +187,14 @@
     },
     {
       title: 'The bench takes any number of atoms',
-      text: 'In Sandbox mode, tap a palette element to add one atom or drag it onto the bench. The steppers change the count. Combine resolves the whole mixture; the note underneath explains the charges and the ratio.',
+      text: 'In Sandbox mode, drag a palette element onto the bench to add one atom; a click only opens its notes. The steppers change the count. Combine resolves the whole mixture; the note underneath explains the charges and the ratio.',
       target: '#sb-workspace',
       prepare: showSandbox,
     },
     {
-      title: 'My products keeps everything',
-      text: 'Every successful product is saved automatically to this shelf. Open a saved product for its full card, remove one, or clear the shelf — clearing asks for a second press.',
-      target: '#sb-shelf',
+      title: 'Every product is saved to the index',
+      text: 'A successful combine is saved on this device, and its entry in the compound index flips from a hint to a named compound. The collection lives there, so the bench stays clear for the next experiment.',
+      target: '#sb-result',
       prepare: showSandbox,
     },
     {
@@ -202,11 +204,29 @@
       prepare: (alive) => showPage('index', alive),
     },
     {
-      title: 'The nomenclature notebook',
-      text: 'Open the handbook one rule at a time, or practise with a short guided path. Both remember progress. That is the whole site — reopen the tour from the gear menu any time.',
-      target: '.nom-choices',
-      prepare: (alive) => showPage('nom', alive),
+      title: 'The courses library',
+      text: 'Short courses are grouped by level. Open a course, read one section at a time and mark it complete; the progress bars remember where you left off. That is the whole site — reopen the tour from the gear menu any time.',
+      target: '.courses-levels .course-card',
+      prepare: (alive) => {
+        if (window.SciLampCourses) window.SciLampCourses.landing();
+        return showPage('courses', alive);
+      },
     },
+  ];
+
+  const STEP_ZH = [
+    ['歡迎來到 Sci-lab', '全站導覽：元素表、實驗台與筆記本。用「下一步」「上一步」或方向鍵移動，隨時可以跳過。'],
+    ['封面', '大標題通往五張粉彩卡片，每張打開指南的不同部分。'],
+    ['一條頂欄，四個單元', '元素表、實驗台、課程與索引都在一下點擊之內。目前所在單元會標示出來。'],
+    ['安靜的選單', '導覽、說明與靈敏度收在齒輪後面，讓主欄保持平靜。'],
+    ['靈敏度設定', '旋轉控制拖曳時形狀反應的速度；縮放控制滾輪放大的強度。'],
+    ['搜尋、篩選與熱圖', '依名稱、符號或原子序搜尋。類別晶片會篩選元素表而不移動卡片；熱圖可依測量性質為 118 種元素上色。'],
+    ['同一張表的四種排列', '檢視列把同一批 118 張卡片在平面表、球體、螺旋與質量網格之間變形。拖曳可旋轉；滾輪可縮放。'],
+    ['打開任何元素', '點卡片看它的資料：完整描述、電子組態、氧化態、安全須知、波耳模型與發射光譜。按 Escape 或背景關閉。'],
+    ['實驗台接受任意數量的原子', '在實驗台模式，把元素面板的原子拖到台上會加入一顆；點擊只會打開筆記。加減鈕改變數量。按「結合」解析整盆混合物；下方說明會解釋電荷與比例。'],
+    ['每個產物都保存到索引', '成功結合後會保存在此裝置，化合物索引中的提示卡會變成有名稱的化合物。收藏都在那裡，實驗台保持清爽，好做下一個實驗。'],
+    ['化合物索引', '已發現的化合物會以粉彩顯示名稱與化學式，其餘藏在提示與進度條後。實驗台做出新東西的瞬間就會更新。'],
+    ['課程庫', '短課程依程度分組。打開課程、一次讀一節並標記完成；進度條會記住你停下的位置。這就是整個網站——隨時可從齒輪選單重開導覽。'],
   ];
 
   /* ---------- state ---------- */
@@ -366,13 +386,16 @@
 
   function paintPanel() {
     const step = STEPS[current];
-    stepLabel.textContent = `Step ${current + 1} of ${STEPS.length}`;
-    titleEl.textContent = step.title;
-    textEl.textContent = step.text;
+    const zh = I18N?.isZh ? STEP_ZH[current] : null;
+    stepLabel.textContent = I18N?.isZh
+      ? `第 ${current + 1} 站，共 ${STEPS.length} 站`
+      : `Step ${current + 1} of ${STEPS.length}`;
+    titleEl.textContent = zh ? zh[0] : step.title;
+    textEl.textContent = zh ? zh[1] : step.text;
     dotsEl.innerHTML = STEPS.map((_, i) => `<span class="tour-dot${i === current ? ' is-on' : ''}"></span>`).join('');
     backBtn.disabled = current === 0;
-    nextBtn.textContent = current === STEPS.length - 1 ? 'Finish' : 'Next';
-    skipBtn.textContent = 'Skip tour';
+    nextBtn.textContent = current === STEPS.length - 1 ? t('Finish', '完成') : t('Next', '下一步');
+    skipBtn.textContent = t('Skip tour', '跳過導覽');
   }
 
   function overlaps(a, b) {
@@ -678,6 +701,12 @@
 
   skipBtn.addEventListener('click', () => finish(true));
 
+  document.addEventListener('scilamp:lang', () => {
+    if (!open) return;
+    paintPanel();
+    placePanel(currentRect);
+  });
+
   /* the overlay owns the wheel; the card may still scroll its own copy */
   function blockScroll(event) {
     if (panel.contains(event.target)) return;
@@ -719,10 +748,18 @@
 
   /* first visit only: a quiet delay, never interrupts a hidden tab */
   if (window.SciLampStore && !SciLampStore.tutorialDone()) {
-    autoTimer = window.setTimeout(() => {
-      autoTimer = 0;
-      if (document.hidden || open || SciLampStore.tutorialDone()) return;
-      start();
-    }, 1800);
+    const schedule = () => {
+      autoTimer = window.setTimeout(() => {
+        autoTimer = 0;
+        if (document.hidden || open || SciLampStore.tutorialDone()) return;
+        start();
+      }, 1800);
+    };
+    const root = document.documentElement;
+    if (root.classList.contains('intro-on') && !root.classList.contains('intro-done')) {
+      document.addEventListener('scilamp:intro-done', schedule, { once: true });
+    } else {
+      schedule();
+    }
   }
 })();

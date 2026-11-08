@@ -1,4 +1,10 @@
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+let reducedMotion = motionQuery.matches;
+motionQuery.addEventListener?.('change', (event) => { reducedMotion = event.matches; });
+
+const I18N = window.SciLampI18n;
+const elName = (el) => I18N?.elementName(el) ?? el[2];
+const catName = (cat) => I18N?.categoryName(cat) ?? CATEGORIES[cat];
 
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
@@ -12,30 +18,32 @@ document.addEventListener('keydown', (event) => {
 
   if (navMenuOpen()) { closeNavMenu({ restoreFocus: true }); return; }
 
-  if (window.scilampSandboxOpen) {
-    if (window.scilampCloseSandbox) window.scilampCloseSandbox();
-    return;
-  }
+  if (window.scilampSandboxOpen) { dismissSandbox(); return; }
 
-  const open = document.querySelector('.page.is-open');
-  if (!open) return;
-  const key = open.id.slice('page-'.length);
-  const { x, y } = pageOrigin();
-  closePage(key, x, y);
+  if (committedKey) routeToCover();
 });
 
 /* ---------- periodic table page ---------- */
 
-const REVEAL_MS = 640;
-const reveal = document.getElementById('reveal');
 const navHome = document.getElementById('nav-home');
 const navMore = document.getElementById('nav-more');
 const navMenu = document.getElementById('nav-menu');
 const navSettings = document.getElementById('nav-settings');
+const routeLoader = document.getElementById('route-loader');
+const routeBackdrop = document.getElementById('route-backdrop');
+const sandboxEl = document.getElementById('sandbox');
 const topnavLinks = [...document.querySelectorAll('.topnav-link')];
-let transitioning = false;
 let pendingMode = null;   /* a shape picked from the menu before the page exists */
-let pendingSandbox = false;   /* the sandbox was asked for from another page */
+let committedKey = null;  /* the page that stays visible after the current route settles */
+let routeSeq = 0;
+let routeTimer = 0;
+let loaderTimer = 0;
+let sandboxBaseKey = null;
+let routeZ = 100;
+
+const routeMs = () => (reducedMotion ? 0 : 300);
+const LOADER_DELAY = 380;
+const PAGE_SCROLLER = '.courses-app, .index-app, .notes-app, .table-scroll';
 
 const hud = {
   root: document.getElementById('hud'),
@@ -51,8 +59,8 @@ function showElement([num, sym, name, cat, x, y]) {
   hud.root.classList.add('is-live');
   hud.root.dataset.cat = cat;
   hud.sym.textContent = sym;
-  hud.name.textContent = `${num} · ${name}`;
-  hud.cat.textContent = `${CATEGORIES[cat]} · ${main ? `group ${x}` : 'f-block'} · period ${main ? y : y - 3}`;
+  hud.name.textContent = `${num} · ${elName([num, sym, name, cat])}`;
+  hud.cat.textContent = `${catName(cat)} · ${main ? `${I18N?.t('group', '族') ?? 'group'} ${x}` : 'f-block'} · ${I18N?.t('period', '週期') ?? 'period'} ${main ? y : y - 3}`;
 }
 
 /* the readout waits a beat after the last cell, so moving across the table never blinks it */
@@ -182,13 +190,17 @@ let activeCell = null;
 let zoomHome = 'none';
 let sheetMode = 'element';    /* element | created | detail | hint */
 let sheetProduct = null;
+let sheetHint = null;
+let sheetElement = null;
 let sheetReturnFocus = null;
 let sheetClosing = false;
+let finishSheetClose = null;
+let sheetCloseTimer = 0;
 
 /* the sheet sits above every page; everything behind it is made inert for as long
    as it is up, and every part gets its previous value back on close.  The tutorial
    is deliberately left alone so its controls keep working while a step shows a card. */
-const QUIET_PARTS = '.cover, .page, .sandbox, .topbar, .help, .reveal';
+const QUIET_PARTS = '.cover, .page, .sandbox, .topbar, .help';
 let quietSaved = null;
 
 function silencePage(quiet) {
@@ -207,6 +219,26 @@ function silencePage(quiet) {
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const STAR_PATH = 'M12 3.6l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.61 6.9 19.3l.98-5.68L3.75 9.6l5.7-.83z';
+const starSvg = `<svg class="icon-star" viewBox="0 0 24 24" aria-hidden="true"><path d="${STAR_PATH}"/></svg>`;
+const copySvg = `<svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="10" height="10" rx="1.8"/><path d="M5.5 14.5V5.5h9"/></svg><svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7.2"/></svg>`;
+
+function favoriteButton(record, extraClass = '') {
+  if (!record || !window.SciLampFx) return '';
+  const active = window.SciLampStore ? SciLampStore.isFavorite(record.id) : false;
+  const label = active
+    ? (I18N?.t('Remove from favorites', '從收藏移除') ?? 'Remove from favorites')
+    : (I18N?.t('Save to favorites', '收藏') ?? 'Save to favorites');
+  return `<button class="icon-btn${extraClass ? ` ${extraClass}` : ''}" type="button" data-sheet-action="favorite"
+    aria-pressed="${active}" aria-label="${label}" title="${label}">${starSvg}</button>`;
+}
+
+function copyButton(label) {
+  if (!window.SciLampFx) return '';
+  const text = I18N?.t('Copy a shareable summary', '複製可分享的摘要') ?? 'Copy a shareable summary';
+  return `<button class="icon-btn" type="button" data-sheet-action="copy" aria-label="${text}" title="${esc(label)}">${copySvg}</button>`;
+}
 
 let detailNum = 0;
 
@@ -257,18 +289,22 @@ function fillPanel(el) {
   detail.dataset.cat = cat;
   facts.num.textContent = num;
   facts.sym.textContent = sym;
-  facts.name.textContent = name;
+  facts.name.textContent = elName(el);
   facts.mass.textContent = `${mass} u`;
 
-  facts.title.textContent = `${sym} — ${name}`;
-  facts.sub.textContent = `${CATEGORIES[cat]} · ${main ? `group ${x}` : 'f-block'} · period ${main ? y : y - 3} · ${phase} at 25 °C`;
-  facts.desc.textContent = description || note;
+  facts.title.textContent = `${sym} — ${elName(el)}`;
+  const position = main ? `${I18N?.t('group', '族') ?? 'group'} ${x}` : 'f-block';
+  const period = `${I18N?.t('period', '週期') ?? 'period'} ${main ? y : y - 3}`;
+  facts.sub.textContent = `${catName(cat)} · ${position} · ${period} · ${I18N?.stateName(phase) ?? phase} ${I18N?.t('at 25 °C', '在 25 °C') ?? 'at 25 °C'}`;
+  facts.desc.textContent = I18N?.elementDescription(el) || description || note;
   facts.note.hidden = true;
   facts.note.textContent = '';
   facts.safetyH.hidden = false;
   facts.bohr.hidden = false;
-  facts.actions.hidden = true;
-  facts.actions.innerHTML = '';
+  sheetElement = el;
+  const record = window.SciLampFx ? SciLampFx.elementRecord(el) : null;
+  facts.actions.innerHTML = favoriteButton(record);
+  facts.actions.hidden = !facts.actions.innerHTML;
 
   facts.list.innerHTML = `
     <div><dt>Atomic number</dt><dd>${num}</dd></div>
@@ -321,10 +357,23 @@ function sheetFocusables() {
     .filter((el) => el.tabIndex !== -1 && !el.disabled && !el.hidden && el.getClientRects().length);
 }
 
+function cancelSheetClose() {
+  if (!sheetClosing) return;
+  clearTimeout(sheetCloseTimer);
+  sheetClosing = false;
+  finishSheetClose = null;
+  zoomer.style.transition = 'none';
+  zoomer.style.transform = 'none';
+  zoomHome = 'none';
+}
+
 function openDetail(cell, el) {
+  cancelSheetClose();
+  if (activeCell && activeCell !== cell) activeCell.classList.remove('is-source');
   activeCell = cell;
   sheetMode = 'element';
   sheetProduct = null;
+  sheetHint = null;
   sheetReturnFocus = cell;
   fillPanel(el);
   cell.classList.add('is-source');
@@ -347,42 +396,68 @@ const elementName = (sym) => {
 };
 
 const productKind = (product) => (
-  product.diatomic ? 'Diatomic element' : SB.KIND_LABEL[product.kind] || 'Compound'
+  product.diatomic
+    ? (I18N?.t('Diatomic element', '雙原子元素') ?? 'Diatomic element')
+    : I18N?.kindLabel(product.kind) || SB.KIND_LABEL[product.kind] || 'Compound'
 );
+
+function localizeComposition(text) {
+  if (!I18N?.isZh || !text) return text;
+  if (/variable composition/i.test(text)) return I18N.t('variable composition', '組成可變');
+  return text.replace(/(\d+)\s+([a-z]+)/g, (match, count, name) => {
+    const row = ELEMENTS.find((entry) => entry[2].toLowerCase() === name);
+    return `${count} ${row ? I18N.elementName(row) : name}`;
+  });
+}
 
 function fillProductSheet(product, mode) {
   const kind = productKind(product);
   const molar = compoundMass(product);
+  const tr = (en, zh) => I18N?.t(en, zh) ?? en;
+  sheetElement = null;
+  const zhText = I18N?.compoundText(product);
+  const description = zhText?.description || product.description;
+  const why = zhText?.why || product.why;
+  const formation = zhText?.formation || product.formation;
+  const properties = zhText?.properties || product.properties;
+  const composition = localizeComposition(product.compositionText || '');
+  const supplied = localizeComposition(product.suppliedText || '');
+  const ratioLabel = product.ratio
+    ? (I18N?.isZh ? `${product.ratio[0]} 陽離子 : ${product.ratio[1]} 陰離子` : SB.ratioText(product.ratio))
+    : '';
   detail.dataset.mode = mode;
   detail.dataset.cat = product.kind === 'alloy' ? 'p' : 'compound';
 
+  const displayName = I18N?.compoundName(product) || product.name;
   facts.num.textContent = product.units > 1 ? `${product.units} ×` : '';
   facts.sym.textContent = product.formula;
-  facts.name.textContent = product.name;
-  facts.mass.textContent = molar ? `${molar} u per formula unit` : 'variable composition';
+  facts.name.textContent = displayName;
+  facts.mass.textContent = molar
+    ? `${molar} u ${tr('per formula unit', '每化學式單位')}`
+    : tr('variable composition', '組成可變');
 
-  facts.title.textContent = mode === 'created' ? product.name : `${product.formula} — ${product.name}`;
+  facts.title.textContent = mode === 'created' ? displayName : `${product.formula} — ${displayName}`;
   const bits = [kind];
-  if (product.ratio) bits.push(SB.ratioText(product.ratio));
-  if (product.units > 1) bits.push(`${product.units} formula units`);
+  if (product.ratio) bits.push(ratioLabel);
+  if (product.units > 1) bits.push(`${product.units} ${tr('formula units', '化學式單位')}`);
   facts.sub.textContent = bits.join(' · ');
 
-  facts.desc.textContent = mode === 'created' ? (product.why || product.description) : (product.description || product.why);
+  facts.desc.textContent = mode === 'created' ? (why || description) : (description || why);
   facts.note.hidden = mode === 'created';
   facts.note.textContent = mode === 'created'
     ? ''
-    : [product.why, product.formation].filter(Boolean).join(' ');
+    : [why, formation].filter(Boolean).join(' ');
 
   const rows = [
-    `<div><dt>Compound type</dt><dd>${kind}</dd></div>`,
-    `<div><dt>Composition</dt><dd>${esc(product.compositionText || '')}</dd></div>`,
-    `<div><dt>Molar mass</dt><dd>${molar ? `${molar} u` : 'Variable — an alloy has no fixed formula'}</dd></div>`,
+    `<div><dt>${tr('Compound type', '化合物類型')}</dt><dd>${kind}</dd></div>`,
+    `<div><dt>${tr('Composition', '組成')}</dt><dd>${esc(composition)}</dd></div>`,
+    `<div><dt>${tr('Molar mass', '莫耳質量')}</dt><dd>${molar ? `${molar} u` : tr('Variable — an alloy has no fixed formula', '可變——合金沒有固定化學式')}</dd></div>`,
   ];
-  if (product.ratio) rows.push(`<div><dt>Ion ratio</dt><dd>${SB.ratioText(product.ratio)}</dd></div>`);
-  rows.push(`<div><dt>How it forms</dt><dd>${esc(product.formation || '')}</dd></div>`);
-  rows.push(`<div><dt>Properties</dt><dd>${esc(product.properties || '')}</dd></div>`);
-  rows.push(`<div><dt>Elements</dt><dd>${product.contains.map((s) => `${s} <span class="fact-hint">${elementName(s)}</span>`).join(', ')}</dd></div>`);
-  if (product.suppliedText) rows.push(`<div><dt>On the bench</dt><dd>${esc(product.suppliedText)}</dd></div>`);
+  if (product.ratio) rows.push(`<div><dt>${tr('Ion ratio', '離子比')}</dt><dd>${ratioLabel}</dd></div>`);
+  rows.push(`<div><dt>${tr('How it forms', '如何形成')}</dt><dd>${esc(formation || '')}</dd></div>`);
+  rows.push(`<div><dt>${tr('Properties', '性質')}</dt><dd>${esc(properties || '')}</dd></div>`);
+  rows.push(`<div><dt>${tr('Elements', '元素')}</dt><dd>${product.contains.map((s) => `${s} <span class="fact-hint">${elementName(s)}</span>`).join(', ')}</dd></div>`);
+  if (supplied) rows.push(`<div><dt>${tr('On the bench', '實驗台上')}</dt><dd>${esc(supplied)}</dd></div>`);
   facts.list.innerHTML = rows.join('');
 
   facts.ext.innerHTML = '';
@@ -394,17 +469,19 @@ function fillProductSheet(product, mode) {
   facts.bohr.innerHTML = '';
 
   const saved = window.SciLampStore && SciLampStore.hasProduct(product.key);
+  const favRecord = window.SciLampFx ? SciLampFx.productRecord(product) : null;
+  const tools = `${favoriteButton(favRecord)}${copyButton(`${product.formula} — ${displayName}`)}`;
   facts.actions.hidden = false;
   if (mode === 'created') {
-    facts.actions.innerHTML = `
-      <span class="sheet-saved"><span aria-hidden="true">✓</span> Saved</span>
-      <button class="sheet-btn" type="button" data-sheet-action="details">full details</button>
-      <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
+    facts.actions.innerHTML = `${tools}
+      <span class="sheet-saved"><span aria-hidden="true">✓</span> ${tr('Saved', '已保存')}</span>
+      <button class="sheet-btn" type="button" data-sheet-action="details">${tr('full details', '完整資料')}</button>
+      <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">${tr('done', '完成')}</button>`;
   } else {
-    facts.actions.innerHTML = `
-      <button class="sheet-btn" type="button" data-sheet-action="sandbox">open the sandbox</button>
-      ${saved ? '<button class="sheet-btn is-danger" type="button" data-sheet-action="remove">remove from my products</button>' : ''}
-      <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
+    facts.actions.innerHTML = `${tools}
+      <button class="sheet-btn" type="button" data-sheet-action="sandbox">${tr('open the sandbox', '打開實驗台')}</button>
+      ${saved ? `<span class="sheet-saved"><span aria-hidden="true">✓</span> ${tr('Saved', '已保存')}</span>` : ''}
+      <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">${tr('done', '完成')}</button>`;
   }
 }
 
@@ -413,28 +490,36 @@ function fillHintSheet(compound) {
   const syms = Object.keys(atoms);
   const total = syms.reduce((sum, s) => sum + atoms[s], 0);
   const metalCount = compound.metals ? compound.metals.length : 0;
-  const kind = compound.kind === 'alloy' ? 'Alloy' : SB.KIND_LABEL[compound.kind] || 'Compound';
+  const kind = I18N?.kindLabel(compound.kind) || SB.KIND_LABEL[compound.kind] || 'Compound';
+  const tr = (en, zh) => I18N?.t(en, zh) ?? en;
+  const zhHint = I18N?.compoundText(compound)?.hint;
+  sheetElement = null;
 
   detail.dataset.mode = 'hint';
   detail.dataset.cat = 'hint';
 
   facts.num.textContent = '?';
   facts.sym.textContent = '???';
-  facts.name.textContent = 'Undiscovered compound';
-  facts.mass.textContent = 'identity hidden';
+  facts.name.textContent = tr('Undiscovered compound', '未發現的化合物');
+  facts.mass.textContent = tr('identity hidden', '身分隱藏');
 
-  facts.title.textContent = `Unknown ${kind.toLowerCase()}`;
-  facts.sub.textContent = metalCount
-    ? `${kind} · ${metalCount} metals · variable ratio`
-    : `${kind} · ${total} atoms · ${syms.length} element${syms.length === 1 ? '' : 's'}`;
-  facts.desc.textContent = 'This compound stays hidden until the bench makes it. Discover it in the sandbox and its name and formula appear here.';
+  facts.title.textContent = I18N?.isZh ? `未知${kind}` : `Unknown ${kind.toLowerCase()}`;
+  facts.sub.textContent = I18N?.isZh
+    ? (metalCount ? `${kind} · ${metalCount} 種金屬 · 比例可變` : `${kind} · ${total} 顆原子 · ${syms.length} 種元素`)
+    : (metalCount ? `${kind} · ${metalCount} metals · variable ratio` : `${kind} · ${total} atoms · ${syms.length} element${syms.length === 1 ? '' : 's'}`);
+  facts.desc.textContent = tr(
+    'This compound stays hidden until the bench makes it. Discover it in the sandbox and its name and formula appear here.',
+    '這個化合物要在實驗台做出來才會揭曉。到實驗台發現它，名稱與化學式就會出現在這裡。'
+  );
   facts.note.hidden = false;
-  facts.note.textContent = `Hint: ${compound.hint}`;
+  facts.note.textContent = I18N?.isZh
+    ? `提示：${zhHint || compound.hint}`
+    : `Hint: ${compound.hint}`;
 
   facts.list.innerHTML = `
-    <div><dt>Compound type</dt><dd>${kind}</dd></div>
-    <div><dt>Atoms in formula</dt><dd>${metalCount ? 'variable' : total}</dd></div>
-    <div><dt>Elements involved</dt><dd>${metalCount || syms.length}</dd></div>`;
+    <div><dt>${tr('Compound type', '化合物類型')}</dt><dd>${kind}</dd></div>
+    <div><dt>${tr('Atoms in formula', '化學式中的原子數')}</dt><dd>${metalCount ? tr('variable', '可變') : total}</dd></div>
+    <div><dt>${tr('Elements involved', '涉及元素')}</dt><dd>${metalCount || syms.length}</dd></div>`;
 
   facts.ext.innerHTML = '';
   facts.spectrum.hidden = true;
@@ -446,8 +531,8 @@ function fillHintSheet(compound) {
 
   facts.actions.hidden = false;
   facts.actions.innerHTML = `
-    <button class="sheet-btn" type="button" data-sheet-action="sandbox">open the sandbox</button>
-    <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">done</button>`;
+    <button class="sheet-btn" type="button" data-sheet-action="sandbox">${tr('open the sandbox', '打開實驗台')}</button>
+    <button class="sheet-btn is-ghost" type="button" data-sheet-action="close">${tr('done', '完成')}</button>`;
 }
 
 function beginSheet(mode, trigger) {
@@ -467,6 +552,7 @@ function openProduct(product, { mode = 'detail', trigger = null } = {}) {
   const nextMode = mode === 'created' ? 'created' : 'detail';
   activeCell = null;
   sheetProduct = product;
+  sheetHint = null;
   fillProductSheet(product, nextMode);
 
   if (detail.classList.contains('is-open')) {
@@ -486,6 +572,7 @@ function openHint(compound, { trigger = null } = {}) {
   if (!compound) return;
   activeCell = null;
   sheetProduct = null;
+  sheetHint = compound;
   fillHintSheet(compound);
 
   if (detail.classList.contains('is-open')) {
@@ -511,14 +598,50 @@ function openElement(which) {
   openDetail(cell, el);
 }
 
-function closeDetail() {
-  if (!detail.classList.contains('is-open') || sheetClosing) return;
+/* the same sheet opened from a favorites card, with no tile to grow from */
+function openElementSheet(which, { trigger = null } = {}) {
+  const el = typeof which === 'number' ? ELEMENTS[which - 1] : ELEMENTS.find((entry) => entry[1] === which);
+  if (!el) return;
+  cancelSheetClose();
+  if (activeCell) {
+    activeCell.classList.remove('is-source');
+    activeCell = null;
+  }
+  sheetMode = 'element';
+  sheetProduct = null;
+  sheetHint = null;
+  if (trigger) sheetReturnFocus = trigger;
+  fillPanel(el);
+  detail.dataset.mode = 'element';
+
+  if (detail.classList.contains('is-open')) {
+    factsPane.scrollTop = 0;
+    factsClose.focus({ preventScroll: true });
+    return;
+  }
+
+  zoomer.style.transition = 'none';
+  zoomer.style.transform = 'none';
+  zoomHome = 'none';
+  beginSheet('element', trigger);
+}
+
+function closeDetail({ instant = false } = {}) {
+  if (!detail.classList.contains('is-open')) return;
+  if (sheetClosing) {
+    if (instant && finishSheetClose) finishSheetClose();
+    return;
+  }
   sheetClosing = true;
   detail.classList.remove('in');
 
   const mode = sheetMode;
   const back = sheetReturnFocus;
   const done = () => {
+    if (!sheetClosing) return;
+    clearTimeout(sheetCloseTimer);
+    sheetClosing = false;
+    finishSheetClose = null;
     detail.classList.remove('is-open');
     detail.setAttribute('aria-hidden', 'true');
     silencePage(false);
@@ -527,9 +650,10 @@ function closeDetail() {
 
     activeCell = null;
     sheetProduct = null;
+    sheetHint = null;
+    sheetElement = null;
     sheetReturnFocus = null;
     sheetMode = 'element';
-    sheetClosing = false;
     zoomer.style.transition = 'none';
     zoomer.style.transform = 'none';
     zoomHome = 'none';
@@ -541,13 +665,14 @@ function closeDetail() {
       navHome.focus({ preventScroll: true });
     }
   };
+  finishSheetClose = done;
 
-  if (reducedMotion) { done(); return; }
+  if (instant || reducedMotion) { done(); return; }
 
   const ms = mode === 'element' ? ZOOM_MS : 300;
   zoomer.style.transition = `transform ${ms}ms var(--ease)`;
   zoomer.style.transform = zoomHome;
-  setTimeout(done, ms);
+  sheetCloseTimer = setTimeout(done, ms);
 }
 
 facts.actions.addEventListener('click', (event) => {
@@ -555,29 +680,29 @@ facts.actions.addEventListener('click', (event) => {
   if (!btn) return;
   const action = btn.dataset.sheetAction;
 
+  if (action === 'favorite') {
+    if (!window.SciLampFx) return;
+    const record = sheetMode === 'element' && sheetElement
+      ? SciLampFx.elementRecord(sheetElement)
+      : SciLampFx.productRecord(sheetProduct);
+    if (!record) return;
+    const active = SciLampFx.toggle(record);
+    SciLampFx.syncFavorite(btn, active);
+    SciLampFx.pop(btn);
+    return;
+  }
+
+  if (action === 'copy' && sheetProduct && window.SciLampFx) {
+    SciLampFx.copy(SciLampFx.productSummary(sheetProduct), btn);
+    return;
+  }
+
   if (action === 'close') { closeDetail(); return; }
 
   if (action === 'details' && sheetProduct) {
     fillProductSheet(sheetProduct, 'detail');
     factsPane.scrollTop = 0;
     factsClose.focus({ preventScroll: true });
-    return;
-  }
-
-  if (action === 'remove' && sheetProduct) {
-    if (window.SciLampStore) SciLampStore.removeProduct(sheetProduct.key);
-    fillProductSheet(sheetProduct, 'detail');
-    const status = document.createElement('span');
-    status.className = 'sheet-saved is-removed';
-    status.textContent = 'Removed from my products';
-    facts.actions.prepend(status);
-    factsClose.focus({ preventScroll: true });
-    return;
-  }
-
-  if (action === 'shelf') {
-    closeDetail();
-    if (window.SciLampNav) SciLampNav.openSandbox({ shelf: true });
     return;
   }
 
@@ -601,8 +726,12 @@ function buildTable() {
     scatter(cell, x, y);
     cell.tabIndex = 0;
     cell.setAttribute('role', 'button');
-    cell.setAttribute('aria-label', `${num} ${sym} ${name}, ${CATEGORIES[cat]} — open details`);
-    cell.innerHTML = `<span class="el-num">${num}</span><span class="el-sym">${sym}</span>`;
+    cell.setAttribute('aria-label', I18N
+      ? I18N.t(`${num} ${sym} ${name}, ${CATEGORIES[cat]} — open details`, `${num} ${sym} ${elName(el)}，${catName(cat)}——開啟詳細資料`)
+      : `${num} ${sym} ${name}, ${CATEGORIES[cat]} — open details`);
+    cell.style.setProperty('--art', SciLampArt.forSymbol(sym));
+    cell.style.setProperty('--mark', SciLampArt.forMark(sym));
+    cell.innerHTML = `<span class="el-art" aria-hidden="true"></span><span class="el-mark" aria-hidden="true"></span><span class="el-num">${num}</span><span class="el-sym">${sym}</span><span class="el-flag" aria-hidden="true"></span>`;
     cell.addEventListener('pointerenter', () => showElement(el));
     cell.addEventListener('pointerleave', idleHud);
     cell.addEventListener('focus', () => showElement(el));
@@ -634,9 +763,12 @@ function buildTable() {
     item.type = 'button';
     item.className = 'legend-item';
     item.dataset.cat = key;
+    item.dataset.label = LEGEND_LABEL[key] || label;
     item.setAttribute('aria-pressed', 'false');
-    item.setAttribute('aria-label', `Filter ${label} elements`);
-    item.innerHTML = `<span class="legend-dot"></span>${LEGEND_LABEL[key] || label}`;
+    item.setAttribute('aria-label', I18N
+      ? I18N.t(`Filter ${label} elements`, `篩選${catName(key)}元素`)
+      : `Filter ${label} elements`);
+    item.innerHTML = `<span class="legend-dot"></span>${catName(key)}`;
     item.addEventListener('click', () => {
       if (catFilter.has(key)) catFilter.delete(key);
       else catFilter.add(key);
@@ -647,133 +779,291 @@ function buildTable() {
   });
 }
 
-function farthestCorner(x, y) {
-  return Math.max(
-    Math.hypot(x, y),
-    Math.hypot(innerWidth - x, y),
-    Math.hypot(x, innerHeight - y),
-    Math.hypot(innerWidth - x, innerHeight - y)
-  );
+function pageEl(key) {
+  return document.getElementById(`page-${key}`);
 }
 
-function setCircle(x, y, r) {
-  reveal.style.setProperty('--cx', `${x}px`);
-  reveal.style.setProperty('--cy', `${y}px`);
-  reveal.style.setProperty('--r', `${r}px`);
+function sandboxVisible() {
+  return !!sandboxEl && !sandboxEl.hidden;
 }
 
-function openPage(key, x, y) {
-  const page = document.getElementById(`page-${key}`);
-  if (!page || transitioning || page.classList.contains('is-open')) return;
-  transitioning = true;
+function replayCoverEntrance() {
+  if (reducedMotion || !cover) return;
+  cover.classList.remove('is-entering');
+  void cover.offsetWidth;
+  cover.classList.add('is-entering');
+}
 
-  setCircle(x, y, 0);
-  reveal.classList.add('active');
-  void reveal.offsetWidth;                       /* commit the collapsed start */
+/* the page itself is a shell; its content scrolls in one inner region */
+function scrollerFor(layer) {
+  if (!layer || layer === cover || layer === sandboxEl) return layer;
+  return layer.querySelector(PAGE_SCROLLER) || layer;
+}
 
-  if (!reducedMotion) reveal.classList.add('animate');
-  setCircle(x, y, farthestCorner(x, y));
+/* called at the start of a route: the incoming layer is still transparent,
+   so the user never sees the jump to the top */
+function resetScroll(layer) {
+  if (!layer) return;
+  const scroller = scrollerFor(layer);
+  if (!scroller) return;
+  scroller.scrollTop = 0;
+  scroller.scrollLeft = 0;
+  window.scrollTo(0, 0);
+}
 
-  setTimeout(() => {
+/* an opaque sheet below all pages, above the menu: page-to-page cross-fades
+   must never reveal the cover between the two layers */
+function setRouteBackdrop(on) {
+  routeBackdrop?.classList.toggle('is-on', Boolean(on));
+}
+
+function nextRouteZ() {
+  routeZ = Math.min(routeZ + 2, 140);
+  return routeZ;
+}
+
+function hideRouteLoader() {
+  clearTimeout(loaderTimer);
+  routeLoader?.classList.remove('is-on');
+}
+
+/* the bar is armed before the target renders: ordinary in-memory routes win
+   the race and never show it, a blocked render does */
+function armRouteLoader(seq) {
+  hideRouteLoader();
+  loaderTimer = setTimeout(() => {
+    if (seq === routeSeq) routeLoader?.classList.add('is-on');
+  }, LOADER_DELAY);
+}
+
+function preparePage(page) {
+  page.classList.remove('is-open', 'is-leaving');
+  page.classList.add('is-entering');
+  page.removeAttribute('aria-hidden');
+  page.inert = false;
+}
+
+function enterPage(page) {
+  if (reducedMotion) {
+    page.classList.remove('is-entering');
     page.classList.add('is-open');
-    page.removeAttribute('aria-hidden');
-    setActiveNav(key);
-    cover.inert = true;
-    cover.setAttribute('aria-hidden', 'true');
-    document.body.classList.add('page-open');
-    reveal.classList.remove('animate', 'active');
-    setCircle(x, y, 0);
-    transitioning = false;
-    page.focus({ preventScroll: true });
-    if (key === 'table') {
-      syncArrange(arrangement);
-      relayout();
-      if (pendingMode) {
-        const picked = pendingMode;
-        pendingMode = null;
-        setMode(picked);
-      } else {
-        arriveTable();
-      }
-      if (pendingSandbox) {
-        pendingSandbox = false;
-        if (window.scilampOpenSandbox) window.scilampOpenSandbox();
-      }
-    }
-  }, reducedMotion ? 0 : REVEAL_MS);
-}
-
-function closePage(key, x, y) {
-  const page = document.getElementById(`page-${key}`);
-  if (!page || transitioning || !page.classList.contains('is-open')) return;
-  transitioning = true;
-  if (key === 'table') {
-    idleHud();
-    pageTable.classList.remove('arriving');
-  }
-
-  setCircle(x, y, farthestCorner(x, y));
-  reveal.classList.add('active');
-  void reveal.offsetWidth;
-
-  page.classList.remove('is-open');
-  setActiveNav('home');
-  if (page.contains(document.activeElement)) navHome?.focus({ preventScroll: true });
-  page.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('page-open');
-
-  if (!reducedMotion) {
-    reveal.classList.add('animate');
-    setCircle(x, y, 0);
-  }
-
-  setTimeout(() => {
-    reveal.classList.remove('animate', 'active');
-    transitioning = false;
-    cover.inert = false;
-    cover.removeAttribute('aria-hidden');
-    navHome?.focus({ preventScroll: true });
-  }, reducedMotion ? 0 : REVEAL_MS);
-}
-
-function cardCentre(card) {
-  const box = card.getBoundingClientRect();
-  return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-}
-
-function pageOrigin() {
-  return cardCentre(navHome);
-}
-
-function navOrigin(key) {
-  const link = document.querySelector(`.topnav-link[data-nav="${key}"]`);
-  return cardCentre(link || navHome);
-}
-
-/* switch pages without leaving a second one open, and without leaving the sandbox
-   or a sheet floating above the page you just left */
-function showPage(key) {
-  if (transitioning) {
-    setTimeout(() => showPage(key), 220);
     return;
   }
-  if (window.scilampSandboxOpen && window.scilampCloseSandbox) window.scilampCloseSandbox();
-  if (detail.classList.contains('is-open') && !sheetClosing) closeDetail();
-  closeNavMenu();
+  void page.offsetWidth;                       /* commit the transparent start pose */
+  page.classList.add('is-open');
+}
 
-  const current = document.querySelector('.page.is-open');
-  if (current && current.id === `page-${key}`) return;
-  if (current) {
-    current.classList.remove('is-open');
-    current.setAttribute('aria-hidden', 'true');
+function hidePage(page, { animate = false } = {}) {
+  if (!page) return;
+  if (page.contains(document.activeElement)) document.activeElement.blur();
+  page.classList.remove('is-entering');
+  if (animate && !reducedMotion) {
+    page.classList.remove('is-open');
+    page.classList.add('is-leaving');
+  } else {
+    page.classList.remove('is-open', 'is-leaving');
+    page.style.zIndex = '';
   }
-  const { x, y } = navOrigin(key);
-  openPage(key, x, y);
+  page.setAttribute('aria-hidden', 'true');
+  page.inert = true;
 }
 
-function openKey(key) {
-  showPage(key);
+function initTableRoute(key) {
+  if (key !== 'table') return;
+  syncArrange(arrangement);
+  relayout();
+  if (pendingMode) {
+    const picked = pendingMode;
+    pendingMode = null;
+    setMode(picked);
+  } else {
+    arriveTable();
+  }
 }
+
+/* every layer that is not the destination starts dissolving on the same frame */
+function retireOtherPages(target, z) {
+  document.querySelectorAll('.page').forEach((page) => {
+    if (page === target) return;
+    page.style.zIndex = String(z);
+    if (page.classList.contains('is-open') || page.classList.contains('is-entering')) {
+      if (page.contains(document.activeElement)) document.activeElement.blur();
+      page.classList.remove('is-open', 'is-entering');
+      page.classList.add('is-leaving');
+      page.setAttribute('aria-hidden', 'true');
+      page.inert = true;
+    }
+  });
+}
+
+function settlePage(key, target, seq) {
+  if (seq !== routeSeq) return;
+  hideRouteLoader();
+
+  if (sandboxVisible() && window.scilampCloseSandbox) {
+    window.scilampCloseSandbox({ animate: false, restoreFocus: false });
+  }
+  document.querySelectorAll('.page').forEach((page) => {
+    if (page !== target) hidePage(page);
+  });
+
+  target.classList.remove('is-entering', 'is-leaving');
+  target.classList.add('is-open');
+  target.style.zIndex = '';
+  target.removeAttribute('aria-hidden');
+  target.inert = false;
+  sandboxBaseKey = null;
+  routeZ = 100;
+  setRouteBackdrop(true);                 /* keep the menu masked for the whole visit */
+  setActiveNav(key);
+  cover.inert = true;
+  cover.setAttribute('aria-hidden', 'true');
+  document.body.classList.add('page-open');
+  target.focus({ preventScroll: true });
+}
+
+/* One route stack for every navigation: the destination is mounted and put on
+   top while the outgoing layer is still fully painted, then both cross-fade
+   with the same 10px rise. The opaque backdrop sits between the menu and the
+   blend, so the cover can never show through a page-to-page transition. */
+function routeToPage(key) {
+  const target = pageEl(key);
+  if (!target) return;
+
+  const seq = ++routeSeq;
+  clearTimeout(routeTimer);
+  armRouteLoader(seq);
+
+  const sandboxUp = sandboxVisible();
+  const sourceCover = !sandboxUp && !cover.inert && !document.body.classList.contains('page-open');
+  const wasOpen = target.classList.contains('is-open') && !target.classList.contains('is-leaving');
+  const alreadyHere = committedKey === key && wasOpen && !sandboxUp;
+
+  setActiveNav(key);
+  cover.inert = true;
+  cover.setAttribute('aria-hidden', 'true');
+  document.body.classList.add('page-open');
+
+  if (alreadyHere) {
+    committedKey = key;
+    settlePage(key, target, seq);
+    return;
+  }
+
+  committedKey = key;
+
+  /* coming from the menu, the menu is the outgoing layer: keep it visible and
+     let the new page rise over it. Between pages, mask it completely. */
+  setRouteBackdrop(!sourceCover);
+
+  const baseZ = nextRouteZ();
+
+  if (sandboxUp && window.scilampCloseSandbox) {
+    window.scilampCloseSandbox({ animate: true, restoreFocus: false });
+    sandboxEl.inert = true;
+    sandboxEl.setAttribute('aria-hidden', 'true');
+    setActiveNav(key);
+  }
+
+  retireOtherPages(target, baseZ);
+
+  resetScroll(target);
+  preparePage(target);
+  target.style.zIndex = String(sandboxUp ? Math.max(baseZ + 2, 112) : baseZ + 2);
+  enterPage(target);
+  if (!wasOpen) initTableRoute(key);
+  routeTimer = setTimeout(() => settlePage(key, target, seq), routeMs());
+}
+
+function routeToCover() {
+  const seq = ++routeSeq;
+  clearTimeout(routeTimer);
+  armRouteLoader(seq);
+  committedKey = null;
+  sandboxBaseKey = null;
+  routeZ = 100;
+
+  const openPages = [...document.querySelectorAll('.page.is-open, .page.is-entering')];
+  const sandboxUp = sandboxVisible();
+
+  cover.inert = false;
+  cover.removeAttribute('aria-hidden');
+  document.body.classList.remove('page-open');
+  setActiveNav('home');
+  setRouteBackdrop(false);
+  resetScroll(cover);
+  replayCoverEntrance();
+
+  if (sandboxUp && window.scilampCloseSandbox) {
+    window.scilampCloseSandbox({ animate: true, restoreFocus: false });
+    sandboxEl.inert = true;
+    sandboxEl.setAttribute('aria-hidden', 'true');
+    setActiveNav('home');
+  }
+
+  openPages.forEach((page, i) => {
+    if (page.id === 'page-table') {
+      idleHud();
+      pageTable.classList.remove('arriving');
+    }
+    page.style.zIndex = String(112 + i);
+    page.classList.remove('is-open', 'is-entering');
+    page.classList.add('is-leaving');
+    page.setAttribute('aria-hidden', 'true');
+    page.inert = true;
+  });
+
+  if (!openPages.length && !sandboxUp) {
+    hideRouteLoader();
+    navHome?.focus({ preventScroll: true });
+    return;
+  }
+
+  routeTimer = setTimeout(() => {
+    if (seq !== routeSeq) return;
+    hideRouteLoader();
+    document.querySelectorAll('.page').forEach((page) => hidePage(page, { animate: false }));
+    navHome?.focus({ preventScroll: true });
+  }, routeMs() + 40);
+}
+
+/* A navigation request always wins: the old page is retired after the new one
+   has painted, and a second request simply layers the next page on top. */
+function showPage(key) {
+  if (detail.classList.contains('is-open')) closeDetail({ instant: true });
+  closeNavMenu();
+  routeToPage(key);
+}
+
+function dismissSandbox() {
+  const baseKey = sandboxBaseKey;
+  const base = baseKey ? pageEl(baseKey) : null;
+  if (window.scilampCloseSandbox) window.scilampCloseSandbox({ animate: true, restoreFocus: false });
+  if (sandboxEl) {
+    sandboxEl.inert = true;
+    sandboxEl.setAttribute('aria-hidden', 'true');
+  }
+  sandboxBaseKey = null;
+
+  if (base) {
+    base.inert = false;
+    base.removeAttribute('aria-hidden');
+    setActiveNav(baseKey);
+    base.focus({ preventScroll: true });
+    return;
+  }
+
+  committedKey = null;
+  cover.inert = false;
+  cover.removeAttribute('aria-hidden');
+  document.body.classList.remove('page-open');
+  setRouteBackdrop(false);
+  setActiveNav('home');
+  replayCoverEntrance();
+  navHome?.focus({ preventScroll: true });
+}
+
+function openKey(key) { showPage(key); }
 
 buildTable();
 
@@ -784,8 +1074,9 @@ buildTable();
 const ARRANGEMENTS = {
   table: { tilt: 0, spin: 0, scale: 1 },
   sphere: { tilt: -14, spin: 0, scale: 0.72 },
-  helix: { tilt: -8, spin: 0, scale: 0.72 },
-  grid: { tilt: -14, spin: -20, scale: 0.72 },
+  helix: { tilt: -12, spin: 0, scale: 0.72 },
+  /* the grid is a face-on lattice, so every one of its cards keeps its label */
+  grid: { tilt: 0, spin: 0, scale: 1 },
 };
 
 const MORPH_MS = 900;
@@ -813,6 +1104,7 @@ const hmUnit = document.getElementById('hm-unit');
 const catFilter = new Set();
 let query = '';
 let heatProp = '';
+let heatData = null;
 
 function cellMatches([num, sym, name, cat]) {
   if (catFilter.size && !catFilter.has(cat)) return false;
@@ -820,6 +1112,7 @@ function cellMatches([num, sym, name, cat]) {
   return (
     sym.toLowerCase().startsWith(query) ||
     name.toLowerCase().includes(query) ||
+    (I18N?.elementName(el).toLowerCase().includes(query) ?? false) ||
     String(num) === query ||
     String(num).startsWith(query)
   );
@@ -835,7 +1128,9 @@ function applyFilters() {
     tiles[i].inert = !hit;
   });
   emptyNote.hidden = hits > 0;
-  filterStatus.textContent = query || catFilter.size ? `${hits} of 118 elements match` : '';
+  filterStatus.textContent = query || catFilter.size
+    ? I18N?.t(`${hits} of 118 elements match`, `${hits} / 118 個元素符合`) ?? `${hits} of 118 elements match`
+    : '';
 }
 
 searchInput.addEventListener('input', () => {
@@ -845,6 +1140,7 @@ searchInput.addEventListener('input', () => {
 
 function clearHeat() {
   heatProp = '';
+  heatData = null;
   delete pageTable.dataset.heatmap;
   tiles.forEach((cell) => {
     cell.style.removeProperty('--hm');
@@ -854,6 +1150,8 @@ function clearHeat() {
 }
 
 function applyHeat(key, map) {
+  heatProp = key;
+  heatData = map;
   const prop = HEAT_PROPS[key];
   const vals = ELEMENTS.map((el) => {
     const rec = map.get(el[0]);
@@ -985,20 +1283,33 @@ function apportion(n, weight, room) {
 function sphereLayout(w, h, card) {
   const n = tiles.length;
   const r = Math.min(w, h) * 0.46;
-  const bands = clamp(Math.floor((2 * r) / (card[1] * AIR)), 4, 20);
 
-  const level = [];          /* each ring's height, its width, and how many cards it can hold apart */
-  const weight = [];
-  const room = [];
-  for (let j = 0; j < bands; j += 1) {
-    const ny = 1 - ((j + 0.5) * 2) / bands;
-    const s = Math.sqrt(Math.max(0, 1 - ny * ny));
-    level.push(-ny * r);
-    weight.push(s);
-    room.push(Math.max(1, Math.floor((2 * Math.PI * r * s) / (card[0] * AIR))));
+  /* rings are spaced by card height, not by the equator's capacity, and extra rings are added
+     only when the ball genuinely needs them — that keeps the poles and the equator evenly filled */
+  const rings = (bands) => {
+    const level = [];
+    const weight = [];
+    const room = [];
+    for (let j = 0; j < bands; j += 1) {
+      const ny = 1 - ((j + 0.5) * 2) / bands;
+      const s = Math.sqrt(Math.max(0, 1 - ny * ny));
+      level.push(-ny * r);
+      weight.push(s);
+      room.push(Math.max(1, Math.floor((2 * Math.PI * r * s) / (card[0] * AIR))));
+    }
+    return { level, weight, room };
+  };
+
+  let bands = clamp(Math.floor((2 * r) / (card[1] * 1.22)), 4, 24);
+  let shape = rings(bands);
+  let capacity = shape.room.reduce((a, b) => a + b, 0);
+  while (capacity < n && bands < 24) {
+    bands += 1;
+    shape = rings(bands);
+    capacity = shape.room.reduce((a, b) => a + b, 0);
   }
 
-  const count = apportion(n, weight, room);
+  const count = apportion(n, shape.weight, shape.room);
   const first = [];
   let acc = 0;
   count.forEach((c) => { first.push(acc); acc += c; });
@@ -1007,7 +1318,7 @@ function sphereLayout(w, h, card) {
 
   return (i) => {
     const j = band[i];
-    const y = level[j] / r;
+    const y = shape.level[j] / r;
     const s = Math.sqrt(Math.max(0, 1 - y * y));
     const a = (2 * Math.PI * (i - first[j])) / count[j] + (j % 2 ? Math.PI / count[j] : 0);
     const nx = s * Math.cos(a);
@@ -1016,24 +1327,49 @@ function sphereLayout(w, h, card) {
   };
 }
 
+const HELIX_TILT = -12;
+const HELIX_AIR = 1.22;       /* vertical air between neighbouring turns */
+const HELIX_GAP = 1.28;       /* room a card needs around the ring, as a share of its width */
+
+/* one source of truth for the coil: how wide the ring is, how many cards ride a turn,
+   how tall the whole coil becomes, and how much of the stage it needs once the camera's
+   perspective has enlarged the near side */
+function helixMetrics(w, h, card) {
+  const n = tiles.length;
+  const r = Math.min(w * 0.34, h * 0.4);
+  const room = Math.max(4, Math.floor((2 * Math.PI * r) / (card[0] * HELIX_GAP)));
+  const per = clamp(room, 6, 40);
+  const turns = Math.ceil(n / per);
+  const height = turns * card[1] * HELIX_AIR;
+  const ring = 2 * r * Math.abs(Math.sin(HELIX_TILT * DEG));
+  return { r, per, turns, height, span: height + ring + card[1] };
+}
+
+/* the coil is sized from the stage, not the other way round: try the largest card that
+   still lands its last turn inside the frame, and only shrink when the stage demands it */
+function fitHelix(w, h, base) {
+  for (let step = 18; step >= 6; step -= 1) {
+    const s = step / 10;
+    const card = [base[0] * s, base[1] * s];
+    const m = helixMetrics(w, h, card);
+    if (m.span * 1.16 <= h && (2 * m.r + card[0] * 1.2) * 1.16 <= w) return { card, m };
+  }
+  const card = [base[0] * 0.45, base[1] * 0.45];
+  return { card, m: helixMetrics(w, h, card) };
+}
+
 function helixLayout(w, h, card) {
   const n = tiles.length;
-  const r = Math.min(w * 0.26, h * 0.3);
-  /* a turn holds as many cards as its circumference can carry apart, and the coil climbs one card height per turn */
-  const per = clamp(Math.round((2 * Math.PI * r) / (card[0] * AIR)), 8, 40);
+  const { r, per, height } = helixMetrics(w, h, card);
   const step = (Math.PI * 2) / per;
-  const height = Math.max(h * 0.82, (n / per) * card[1] * AIR);
   return (i) => {
     const a = i * step;
-    const nx = Math.cos(a);
-    const nz = Math.sin(a);
-    return [nx * r, (i / (n - 1) - 0.5) * height, nz * r, Math.atan2(nx, nz) / DEG, 0];
+    /* facing is handled by fadeByDepth, which turns every card toward the camera;
+       an outward-facing card would hide its label on the far side of the coil */
+    return [Math.cos(a) * r, (i / (n - 1) - 0.5) * height, Math.sin(a) * r, 0, 0];
   };
 }
 
-/* the grid is a stack of square sheets: square cards in square rows, the lightest
-   element at the top left of the nearest sheet and the heaviest at the bottom right
-   of the deepest one, ordered by atomic mass */
 const MASS_RANK = (() => {
   const order = ELEMENTS
     .map((el, i) => [i, parseFloat(String(el[6]).replace(/[[\]]/g, ''))])
@@ -1043,27 +1379,25 @@ const MASS_RANK = (() => {
   return rank;
 })();
 
-function gridLayout(w, h, card) {
-  const n = tiles.length;
-  const g = card[0] * AIR * 1.12;
-  const k = clamp(Math.min(Math.floor((w * 0.9) / g), Math.floor((h * 0.86) / g)), 3, 11);
-  const per = k * k;
-  const layers = Math.ceil(n / per);
-  const gz = card[0] * AIR * 1.7;
+/* the grid is one mass-ordered sheet — not a stack of sheets, so nothing can be
+   buried behind a neighbour or lose its label down a deeper layer */
+const GRID_COLS = Math.ceil(Math.sqrt(tiles.length));
+const GRID_ROWS = Math.ceil(tiles.length / GRID_COLS);
+
+function gridPitch(w, h) {
+  return Math.min((w * 0.94) / GRID_COLS, (h * 0.94) / GRID_ROWS);
+}
+
+function gridLayout(w, h) {
+  const pitch = gridPitch(w, h);
   return (i) => {
     const slot = MASS_RANK[i];
-    const layer = Math.floor(slot / per);
-    const q = slot % per;
-    const row = Math.floor(q / k);
-    const col = q % k;
-    const inLayer = Math.min(per, n - layer * per);
-    const rows = Math.ceil(inLayer / k);          /* the last sheet is short, so it centres itself */
-    const shift = layer % 2 ? 0.5 : 0;
+    const row = Math.floor(slot / GRID_COLS);
+    const col = slot % GRID_COLS;
     return [
-      (col + shift - (k - 1) / 2) * g,
-      (row - (rows - 1) / 2 + (layer % 2 ? 0.5 : 0)) * g,
-      /* the first sheet is the fullest one, so it is the one nearest the camera */
-      (((layers - 1) / 2) - layer) * gz,
+      (col - (GRID_COLS - 1) / 2) * pitch,
+      (row - (GRID_ROWS - 1) / 2) * pitch,
+      0,
       0,
       0,
     ];
@@ -1104,8 +1438,15 @@ function build(name) {
   const box = flat.box;
   const scale = ARRANGEMENTS[name].scale;
   let tile = [flat.tile[0] * scale, flat.tile[1] * scale];
-  /* the grid reads as a square lattice, so its cards are cut square */
-  if (name === 'grid') tile = [Math.min(tile[0], tile[1]), Math.min(tile[0], tile[1])];
+
+  if (name === 'grid') {
+    /* the sheet owns its scale: the pitch is chosen from the stage and the card
+       is cut to fit that pitch, so eleven rows can never fall out of the frame */
+    const side = gridPitch(box.width, box.height) * 0.8;
+    tile = [side, side];
+  } else if (name === 'helix') {
+    tile = fitHelix(box.width, box.height, tile).card;
+  }
 
   const builder = BUILDERS[name];
   if (!builder) {
@@ -1128,6 +1469,43 @@ function build(name) {
   return { poses, reach: far, tile };
 }
 
+/* cramped stages (phones, short windows) cannot hold a legible 3D shape; they get
+   the same 118 cards as a simple scrollable lattice instead of a shrunken coil */
+const narrowStage = matchMedia('(max-width: 767px)');
+
+function shouldCompact(name) {
+  if (name === 'table') return false;
+  if (narrowStage.matches) return true;
+  const w = stageView.clientWidth;
+  const h = stageView.clientHeight;
+  if (!w || !h) return true;
+  if (h < 340) return true;
+  if (name === 'grid' && gridPitch(w, h) < 36) return true;
+  return false;
+}
+
+function enterCompact(name) {
+  if (morphRAF) { cancelAnimationFrame(morphRAF); morphRAF = null; }
+  pageTable.classList.remove('arriving');
+  pageTable.dataset.mode = name;
+  pageTable.dataset.compact = '';
+  pageTable.style.removeProperty('--zoom');
+  stageBoard.style.removeProperty('--tilt');
+  stageBoard.style.removeProperty('--spin');
+  tiles.forEach((cell, i) => {
+    ['--px', '--py', '--pz', '--oy', '--ox', '--near', '--label', '--ink-near'].forEach((prop) => cell.style.removeProperty(prop));
+    cell.style.order = name === 'grid' ? String(MASS_RANK[i]) : '';
+  });
+  nearPrev.fill(NaN);
+  labelPrev.fill(NaN);
+}
+
+function leaveCompact() {
+  if (!pageTable.hasAttribute('data-compact')) return;
+  pageTable.removeAttribute('data-compact');
+  tiles.forEach((cell) => { cell.style.order = ''; });
+}
+
 function writeCard(size) {
   pageTable.style.setProperty('--tile-w', `${size[0].toFixed(1)}px`);
   pageTable.style.setProperty('--tile-h', `${size[1].toFixed(1)}px`);
@@ -1148,6 +1526,7 @@ function snapTo(poses, newReach, size) {
   writeCard(card);
   tiles.forEach((cell, i) => writeTile(cell, shown[i]));
   nearPrev.fill(NaN);
+  labelPrev.fill(NaN);
   fadeByDepth();
 }
 
@@ -1162,8 +1541,9 @@ const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) 
 function landTable() {
   pageTable.dataset.mode = 'table';
   nearPrev.fill(NaN);
+  labelPrev.fill(NaN);
   tiles.forEach((cell) => {
-    ['--px', '--py', '--pz', '--oy', '--ox', '--near'].forEach((name) => cell.style.removeProperty(name));
+    ['--px', '--py', '--pz', '--oy', '--ox', '--near', '--label', '--ink-near'].forEach((name) => cell.style.removeProperty(name));
   });
 }
 
@@ -1264,6 +1644,13 @@ function applyDrag() {
 
 function relayout() {
   if (!stageView.offsetWidth || !stageView.offsetHeight) return;   /* the page is hidden; wait for it to come back */
+
+  if (shouldCompact(arrangement)) {
+    enterCompact(arrangement);
+    return;
+  }
+  leaveCompact();
+
   const built = build(arrangement);
 
   /* the stage changed size mid-flight, so the tiles keep going to the new version of the shape */
@@ -1279,9 +1666,11 @@ function relayout() {
 
 /* how near each tile is to the camera, so the far half of a shape recedes instead of clouding the near half */
 const nearPrev = tiles.map(() => NaN);
+const labelPrev = tiles.map(() => NaN);
+let billboardPrev = false;
 
 function fadeByDepth() {
-  if (pageTable.dataset.mode === 'table') return;
+  if (pageTable.dataset.mode === 'table' || pageTable.hasAttribute('data-compact')) return;
   const ct = Math.cos(tilt * DEG);
   const st = Math.sin(tilt * DEG);
   const cs = Math.cos(spin * DEG);
@@ -1293,14 +1682,52 @@ function fadeByDepth() {
   shown.forEach((p) => { deepest = Math.max(deepest, Math.abs(camZ(p[0], p[1], p[2]))); });
   const shade = clamp(deepest / (reach * 0.6), 0, 1);
 
+  /* the coil and the lattice turn every card toward the viewer: a card left facing
+     outward loses its back face at some point on the turn, which read as a blank tile */
+  const billboard = arrangement === 'helix' || arrangement === 'grid';
+  if (billboard) {
+    const oy = `${(-spin).toFixed(2)}deg`;
+    const ox = `${(-tilt).toFixed(2)}deg`;
+    tiles.forEach((cell, i) => {
+      cell.style.setProperty('--oy', oy);
+      cell.style.setProperty('--ox', ox);
+      /* a face turned to the viewer keeps its ink undimmed, whatever its depth */
+      cell.style.setProperty('--ink-near', '1');
+      /* the label test below reads the card's own pose, but a billboarded card has
+         already cancelled the board's turn; without this every label faded out once
+         the scene passed ~76deg of tilt, leaving a screen of blank tiles */
+      if (!billboardPrev) {
+        cell.style.setProperty('--label', '1');
+        labelPrev[i] = 1;
+      }
+    });
+  } else if (billboardPrev) {
+    tiles.forEach((cell) => cell.style.removeProperty('--ink-near'));
+    labelPrev.fill(NaN);
+  }
+  billboardPrev = billboard;
+
   tiles.forEach((cell, i) => {
     const p = shown[i];
     const raw = Math.pow(clamp((camZ(p[0], p[1], p[2]) / reach + 1) / 2, 0, 1), 1.25);
     const v = 1 - (1 - raw) * shade;
-    /* an imperceptible step is not worth repainting 118 cards for */
-    if (Math.abs(v - nearPrev[i]) < 0.02) return;
-    nearPrev[i] = v;
-    cell.style.setProperty('--near', v.toFixed(2));
+    /* an imperceptible step is not worth repainting 118 cards for (NaN on first run must still paint) */
+    if (!(Math.abs(v - nearPrev[i]) < 0.02)) {
+      nearPrev[i] = v;
+      cell.style.setProperty('--near', v.toFixed(2));
+    }
+
+    /* a card turned edge-on shows its label as a smear, so the text follows the facing
+       rather than the depth; billboarded cards always face the viewer */
+    const oy = p[3] * DEG;
+    const ox = p[4] * DEG;
+    const cox = Math.cos(ox);
+    const face = camZ(cox * Math.sin(oy), -Math.sin(ox), cox * Math.cos(oy));
+    const label = billboard ? 1 : clamp((face - 0.08) / 0.24, 0, 1);
+    if (!(Math.abs(label - labelPrev[i]) < 0.03)) {
+      labelPrev[i] = label;
+      cell.style.setProperty('--label', label.toFixed(2));
+    }
   });
 }
 
@@ -1332,10 +1759,35 @@ function startGlide() {
   glideRAF = requestAnimationFrame(glide);
 }
 
+/* the arrangement breathes on its own until a hand touches it */
+const IDLE_MS = 3400;
+let idleTimer = 0;
+
+function stageIdleAllowed() {
+  return !reducedMotion && arrangement !== 'table' && !pageTable.hasAttribute('data-compact');
+}
+
+function scheduleIdle() {
+  clearTimeout(idleTimer);
+  stageView.classList.remove('is-idle');
+  if (!stageIdleAllowed()) return;
+  idleTimer = window.setTimeout(() => {
+    idleTimer = 0;
+    if (drag || document.hidden || !stageIdleAllowed()) return;
+    stageView.classList.add('is-idle');
+  }, IDLE_MS);
+}
+
+function wakeStage() {
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = 0; }
+  stageView.classList.remove('is-idle');
+}
+
 /* a turn is not a click: once the pointer has travelled, the release is swallowed */
 stageView.addEventListener('pointerdown', (event) => {
   suppressClick = false;
-  if (arrangement === 'table') return;
+  if (arrangement === 'table' || pageTable.hasAttribute('data-compact')) return;
+  wakeStage();
   if (glideRAF) { cancelAnimationFrame(glideRAF); glideRAF = null; }
   pinPose();
   spinVel = 0;
@@ -1366,6 +1818,7 @@ function endDrag(event) {
   drag = null;
   stageView.classList.remove('dragging');
   startGlide();
+  scheduleIdle();
 }
 
 stageView.addEventListener('click', (event) => {
@@ -1380,8 +1833,9 @@ let wheelAcc = 0;
 let wheelRAF = 0;
 
 stageView.addEventListener('wheel', (event) => {
-  if (arrangement === 'table') return;
+  if (arrangement === 'table' || pageTable.hasAttribute('data-compact')) return;
   event.preventDefault();
+  wakeStage();
   wheelAcc += event.deltaY;
   if (wheelRAF) return;
   wheelRAF = requestAnimationFrame(() => {
@@ -1391,12 +1845,20 @@ stageView.addEventListener('wheel', (event) => {
     wheelAcc = 0;
     applyRotation();
   });
+  scheduleIdle();
 }, { passive: false });
 
 function setMode(name) {
+  applyMode(name);
+  scheduleIdle();
+}
+
+function applyMode(name) {
   if (!ARRANGEMENTS[name] || name === arrangement) return;
   if (!stageView.offsetWidth || !stageView.offsetHeight) return;
-  const built = build(name);
+
+  const wasCompact = pageTable.hasAttribute('data-compact');
+  const compact = shouldCompact(name);
 
   arrangement = name;
   syncArrange(name);
@@ -1405,8 +1867,28 @@ function setMode(name) {
   spinVel = 0;
   tiltVel = 0;
 
-  /* the flat table is only handed to the grid once the tiles have landed in their slots */
+  if (compact) {
+    enterCompact(name);
+    return;
+  }
+
+  leaveCompact();
+  const built = build(name);
+
+  /* the flat table is only handed to its grid once the tiles have landed in their slots */
   if (name !== 'table') pageTable.dataset.mode = name;
+
+  /* a compact lattice has no 3D pose to fly from, so it hands over in one clean step */
+  if (wasCompact) {
+    if (morphRAF) { cancelAnimationFrame(morphRAF); morphRAF = null; }
+    tilt = ARRANGEMENTS[name].tilt;
+    spin = ARRANGEMENTS[name].spin;
+    zoom = 1;
+    snapTo(built.poses, built.reach, built.tile);
+    if (name === 'table') landTable();
+    applyRotation();
+    return;
+  }
 
   /* a hidden page never gets a frame to fly through, so it lands in its new shape straight away */
   if (reducedMotion || document.hidden) {
@@ -1455,6 +1937,42 @@ detail.addEventListener('keydown', (event) => {
   }
 });
 
+/* ---------- theme: the night stage is the default, a manual choice is remembered ---------- */
+
+const themeBtn = document.getElementById('nav-theme');
+const themeMeta = document.querySelector('meta[name="theme-color"]');
+const themeRoot = document.documentElement;
+const THEME_KEY = 'scilamp-theme';
+
+function paintTheme(theme) {
+  themeRoot.dataset.theme = theme;
+  if (themeMeta) themeMeta.content = theme === 'dark' ? '#000000' : '#ffffff';
+  if (themeBtn) {
+    const dark = theme === 'dark';
+    themeBtn.setAttribute('aria-pressed', String(dark));
+    themeBtn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+  document.dispatchEvent(new CustomEvent('scilamp:theme', { detail: { theme } }));
+}
+
+paintTheme(themeRoot.dataset.theme === 'dark' ? 'dark' : 'light');
+
+if (themeBtn) {
+  themeBtn.addEventListener('click', () => {
+    const next = themeRoot.dataset.theme === 'dark' ? 'light' : 'dark';
+    try {
+      localStorage.setItem(THEME_KEY, next);
+    } catch (error) {
+      /* private mode: the choice simply lasts for this visit */
+    }
+    paintTheme(next);
+  });
+}
+
+document.addEventListener('scilamp:theme', () => {
+  if (heatProp && heatData) applyHeat(heatProp, heatData);
+});
+
 /* ---------- the top bar: primary sections, one quiet menu ---------- */
 
 const SENS = { turn: 1, zoom: 1 };
@@ -1479,39 +1997,41 @@ function setActiveNav(key) {
 /* the top bar is the way back out of everything */
 function backToMenu() {
   closeNavMenu();
-  if (window.scilampSandboxOpen && window.scilampCloseSandbox) window.scilampCloseSandbox();
-  if (detail.classList.contains('is-open')) closeDetail();
-  const open = document.querySelector('.page.is-open');
-  if (!open) { setActiveNav('home'); return; }
-  const key = open.id.slice('page-'.length);
-  const { x, y } = pageOrigin();
-  closePage(key, x, y);
+  if (detail.classList.contains('is-open')) closeDetail({ instant: true });
+  routeToCover();
 }
 
-function openSandboxFromNav({ shelf = false } = {}) {
-  if (transitioning) {
-    setTimeout(() => openSandboxFromNav({ shelf }), 220);
-    return;
-  }
-  if (detail.classList.contains('is-open')) closeDetail();
+function openSandboxFromNav() {
+  if (detail.classList.contains('is-open')) closeDetail({ instant: true });
   closeNavMenu();
 
-  const start = () => {
-    if (window.scilampOpenSandbox) window.scilampOpenSandbox();
+  if (window.scilampSandboxOpen) {
     setActiveNav('sandbox');
-    if (shelf && window.scilampShowShelf) window.scilampShowShelf();
-  };
-
-  if (pageTable.classList.contains('is-open')) { start(); return; }
-
-  const current = document.querySelector('.page.is-open');
-  if (current) {
-    current.classList.remove('is-open');
-    current.setAttribute('aria-hidden', 'true');
+    return;
   }
-  pendingSandbox = true;
-  const { x, y } = navOrigin('sandbox');
-  openPage('table', x, y);
+
+  const baseKey = committedKey;
+  const base = baseKey ? pageEl(baseKey) : null;
+  ++routeSeq;
+  clearTimeout(routeTimer);
+  hideRouteLoader();
+  if (base) settlePage(baseKey, base, routeSeq);
+  else document.querySelectorAll('.page').forEach((page) => hidePage(page));
+
+  sandboxBaseKey = baseKey;
+  if (base && base.id !== 'page-table') {
+    if (base.contains(document.activeElement)) document.activeElement.blur();
+    base.inert = true;
+    base.setAttribute('aria-hidden', 'true');
+  }
+  cover.inert = true;
+  cover.setAttribute('aria-hidden', 'true');
+  document.body.classList.add('page-open');
+  setActiveNav('sandbox');
+  resetScroll(sandboxEl);
+  sandboxEl.inert = false;
+  setRouteBackdrop(Boolean(base));
+  if (window.scilampOpenSandbox) window.scilampOpenSandbox();
 }
 
 /* ---------- the more menu ---------- */
@@ -1588,6 +2108,16 @@ settingsToggle.addEventListener('click', () => {
   if (open) requestAnimationFrame(() => document.getElementById('sens-turn').focus({ preventScroll: true }));
 });
 
+navMenu.querySelector('[data-menu="profile"]').addEventListener('click', () => {
+  closeNavMenu();
+  showPage('profile');
+});
+
+navMenu.querySelector('[data-menu="notes"]').addEventListener('click', () => {
+  closeNavMenu();
+  showPage('notes');
+});
+
 navMenu.querySelector('[data-menu="tutorial"]').addEventListener('click', () => {
   closeNavMenu();
   if (window.scilampStartTutorial) window.scilampStartTutorial();
@@ -1650,6 +2180,9 @@ helpEl.addEventListener('keydown', (event) => {
 
 document.getElementById('sb-help')?.addEventListener('click', (event) => openHelp(event.currentTarget));
 
+/* the bench button enters through the same route so Escape knows what to return to */
+document.getElementById('sandbox-entry')?.addEventListener('click', () => openSandboxFromNav());
+
 /* ---------- section links ---------- */
 
 topnavLinks.forEach((link) => {
@@ -1667,9 +2200,7 @@ setActiveNav('home');
 
 /* cover cards and hero buttons are the front door */
 function openFromCover(trigger, key) {
-  if (transitioning) return;
-  const box = trigger.getBoundingClientRect();
-  openPage(key, box.left + box.width / 2, box.top + box.height / 2);
+  showPage(key);
 }
 
 document.querySelectorAll('[data-open]').forEach((button) => {
@@ -1698,8 +2229,7 @@ arrangeButtons.forEach((button) => {
     const name = button.dataset.nav;
     if (!document.querySelector('.page.is-open')) {
       pendingMode = name;
-      const { x, y } = pageOrigin();
-      openPage('table', x, y);
+      showPage('table');
       return;
     }
     setMode(name);
@@ -1722,9 +2252,54 @@ bindSens('sens-zoom', 'zoom');
 
 syncArrange('table');
 
+/* UI strings handled by the dictionary; names and generated labels refresh here */
+function refreshLocalizedChrome() {
+  document.querySelectorAll('.legend-item').forEach((item) => {
+    const key = item.dataset.cat;
+    if (!key || !CATEGORIES[key]) return;
+    item.innerHTML = `<span class="legend-dot"></span>${catName(key)}`;
+    item.setAttribute('aria-label', I18N
+      ? I18N.t(`Filter ${CATEGORIES[key]} elements`, `篩選${catName(key)}元素`)
+      : `Filter ${CATEGORIES[key]} elements`);
+  });
+  document.querySelectorAll('.el[data-number]').forEach((cell) => {
+    const row = ELEMENTS.find((e) => e[0] === Number(cell.dataset.number));
+    if (!row) return;
+    cell.setAttribute('aria-label', I18N
+      ? I18N.t(`${row[0]} ${row[1]} ${row[2]}, ${CATEGORIES[row[3]]} — open details`, `${row[0]} ${row[1]} ${elName(row)}，${catName(row[3])}——開啟詳細資料`)
+      : `${row[0]} ${row[1]} ${row[2]}, ${CATEGORIES[row[3]]} — open details`);
+  });
+  if (detail.classList.contains('is-open')) {
+    if (sheetMode === 'element') {
+      const row = sheetElement || (activeCell ? ELEMENTS.find((e) => e[0] === Number(activeCell.dataset.number)) : null);
+      if (row) fillPanel(row);
+    } else if (sheetProduct) {
+      fillProductSheet(sheetProduct, sheetMode);
+    } else if (sheetMode === 'hint' && sheetHint) {
+      fillHintSheet(sheetHint);
+    }
+  }
+  themeBtn?.setAttribute('aria-label', document.documentElement.dataset.theme === 'dark'
+    ? I18N.t('Switch to light theme', '切換至淺色主題')
+    : I18N.t('Switch to dark theme', '切換至深色主題'));
+}
+
+document.addEventListener('scilamp:lang', refreshLocalizedChrome);
+
+document.addEventListener('scilamp:favorites', () => {
+  if (!detail.classList.contains('is-open') || !window.SciLampFx) return;
+  const btn = facts.actions.querySelector('[data-sheet-action="favorite"]');
+  if (!btn) return;
+  const record = sheetMode === 'element' && sheetElement
+    ? SciLampFx.elementRecord(sheetElement)
+    : SciLampFx.productRecord(sheetProduct);
+  if (record) SciLampFx.syncFavorite(btn, SciLampStore.isFavorite(record.id));
+});
+
 /* small public surface for the sandbox, the index and the tour */
 window.SciLampSheet = {
   openElement,
+  openElementSheet,
   openProduct,
   openHint,
   close: closeDetail,

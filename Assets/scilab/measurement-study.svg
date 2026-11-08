@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 600" width="480" height="600">
+  <defs>
+    <pattern id="paper-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#191612" stroke-opacity=".05" stroke-width="1" />
+    </pattern>
+    <clipPath id="cylinder">
+      <path d="M104 148h100v332q0 12-12 12H116q-12 0-12-12z" />
+    </clipPath>
+  </defs>
+
+  <rect x="20" y="20" width="440" height="560" rx="18" fill="url(#paper-grid)" />
+
+  <circle cx="372" cy="158" r="116" fill="#faf1d9" opacity=".8" />
+  <circle cx="120" cy="430" r="150" fill="#e5f1e8" opacity=".75" />
+  <circle cx="326" cy="452" r="54" fill="#f9e9e4" opacity=".8" />
+
+  <!-- graduated cylinder -->
+  <ellipse cx="156" cy="494" rx="66" ry="6" fill="#191612" opacity=".07" />
+  <path d="M104 148h100v332q0 12-12 12H116q-12 0-12-12z" fill="#fffdf8" fill-opacity=".55" stroke="#191612" stroke-width="2" />
+  <g clip-path="url(#cylinder)">
+    <path d="M104 266C130 266 132 284 154 284C176 284 178 266 204 266V480Q204 492 192 492H116Q104 492 104 480Z" fill="#cfe6d9" opacity=".92" />
+    <path d="M104 266C130 266 132 284 154 284C176 284 178 266 204 266" fill="none" stroke="#2f5c45" stroke-width="2" />
+    <path d="M119 164V470" stroke="#fffdf8" stroke-width="5" stroke-linecap="round" opacity=".85" />
+    <path d="M196 170V464" stroke="#191612" stroke-width="1.6" stroke-opacity=".12" />
+  </g>
+
+  <g stroke="#191612" stroke-linecap="round" stroke-opacity=".55" stroke-width="1.6">
+    <path d="M204 302h-9M204 318h-19M204 334h-9M204 350h-9M204 366h-19M204 382h-9M204 398h-9M204 414h-19M204 430h-9M204 446h-9M204 462h-19M204 478h-9" />
+  </g>
+  <g fill="#6f6a61" font-family="Georgia, 'Times New Roman', serif" font-size="17">
+    <text x="218" y="323">250</text>
+    <text x="218" y="371">200</text>
+    <text x="218" y="419">150</text>
+    <text x="218" y="467">100</text>
+  </g>
+  <text x="218" y="302" fill="#b3564a" font-family="Georgia, 'Times New Roman', serif" font-size="15" font-style="italic">mL</text>
+
+  <path d="M104 284H268" fill="none" stroke="#b3564a" stroke-width="2" stroke-dasharray="4 6" stroke-linecap="round" />
+  <path d="M276 277l-10 7 10 7z" fill="#b3564a" />
+
+  <rect x="96" y="132" width="120" height="16" rx="8" fill="#fffdf8" stroke="#191612" stroke-width="2" />
+  <path d="M110 140h100" stroke="#191612" stroke-opacity=".3" stroke-width="1.4" stroke-linecap="round" />
+
+  <!-- thermometer -->
+  <ellipse cx="323" cy="494" rx="34" ry="6" fill="#191612" opacity=".07" />
+  <rect x="306" y="142" width="34" height="324" rx="17" fill="#fffdf8" fill-opacity=".6" stroke="#191612" stroke-width="2" />
+  <rect x="319" y="266" width="8" height="192" rx="4" fill="#b3564a" />
+  <circle cx="323" cy="466" r="27" fill="#f2d8d1" stroke="#191612" stroke-width="2" />
+  <circle cx="323" cy="466" r="16" fill="#b3564a" />
+  <rect x="311.5" y="160" width="5" height="286" rx="2.5" fill="#fffdf8" opacity=".8" />
+  <g stroke="#191612" stroke-linecap="round" stroke-opacity=".5" stroke-width="1.5">
+    <path d="M306 176h-8M306 190h-8M306 204h-9M306 218h-8M306 232h-16M306 246h-8M306 260h-8M306 274h-9M306 288h-16M306 302h-8M306 316h-8M306 330h-9M306 344h-16M306 358h-8M306 372h-8M306 386h-9M306 400h-16M306 414h-8M306 428h-8" />
+  </g>
+  <text x="354" y="168" fill="#6f6a61" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-style="italic">&#176;C</text>
+
+  <!-- calibration weight -->
+  <ellipse cx="392" cy="495" rx="36" ry="6" fill="#191612" opacity=".07" />
+  <path d="M379 456v-11a11 11 0 0 1 22 0v11" fill="#faf1d9" stroke="#191612" stroke-width="2" />
+  <path d="M366 456h46l7 27a9 9 0 0 1-9 11h-42a9 9 0 0 1-9-11z" fill="#faf1d9" stroke="#191612" stroke-width="2" />
+  <text x="389" y="486" fill="#6e5924" font-family="Georgia, 'Times New Roman', serif" font-size="17" text-anchor="middle">50 g</text>
+
+  <!-- bench rule -->
+  <rect x="44" y="498" width="392" height="38" rx="5" fill="#fffdf8" stroke="#191612" stroke-width="1.8" />
+  <g stroke="#191612" stroke-opacity=".45" stroke-width="1.4" stroke-linecap="round">
+    <path d="M56 498v9M72 498v9M88 498v9M104 498v9M120 498v9M136 498v9M152 498v9M168 498v9M184 498v9M200 498v9M216 498v9M232 498v9M248 498v9M264 498v9M280 498v9M296 498v9M312 498v9M328 498v9M344 498v9M360 498v9M376 498v9M392 498v9M408 498v9M424 498v9" />
+    <path d="M56 498v16M136 498v16M216 498v16M296 498v16M376 498v16" stroke-opacity=".6" />
+  </g>
+  <path d="M240 498v24" stroke="#b3564a" stroke-width="2.5" stroke-linecap="round" />
+</svg>

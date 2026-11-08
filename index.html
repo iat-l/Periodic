@@ -3,23 +3,120 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sci-lamp — a field guide to the elements</title>
-<meta name="description" content="Sci-lamp is a calm, visual field guide to the 118 elements — an interactive periodic table, nomenclature handbook and compound sandbox." />
-<meta name="theme-color" content="#fafaf7" />
+<title>Sci-lab — a field guide to the elements</title>
+<link rel="icon" href="Assets/scilab/favicon.svg" type="image/svg+xml" />
+<meta name="description" content="Sci-lab is a calm, visual field guide to the 118 elements — an interactive periodic table, short chemistry courses and a compound sandbox." />
+<meta property="og:title" content="Sci-lab — a field guide to the elements" />
+<meta property="og:description" content="Sci-lab is a calm, visual field guide to the 118 elements — an interactive periodic table, short chemistry courses and a compound sandbox." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#000000" />
+<script>
+  (() => {
+    try {
+      const saved = localStorage.getItem('scilamp-theme');
+      const theme = saved === 'dark' || saved === 'light' ? saved : 'dark';
+      document.documentElement.dataset.theme = theme;
+    } catch (error) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+  })();
+</script>
+<script>
+  (() => {
+    try {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      document.documentElement.classList.add('intro-on');
+      /* a broken script must never leave the veil in place */
+      setTimeout(() => {
+        document.getElementById('intro-veil')?.remove();
+        document.documentElement.classList.remove('intro-on');
+      }, 7000);
+    } catch (error) { /* no preview, no intro */ }
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous" />
 <link rel="stylesheet" href="style.css" />
+<noscript><style>.intro-veil { display: none !important; }</style></noscript>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
+
+<div class="intro-veil" id="intro-veil" aria-hidden="true">
+  <div class="intro-veil-head">
+    <span class="intro-veil-mark">Sci-lab</span>
+    <span class="intro-veil-meta">Field guide &middot; 118 elements</span>
+  </div>
+
+  <div class="intro-veil-core">
+    <svg class="intro-atom" viewBox="0 0 240 240" aria-hidden="true" focusable="false">
+      <defs>
+        <path id="intro-orbit-path" d="M16 120a104 34 0 1 0 208 0a104 34 0 1 0-208 0" />
+      </defs>
+      <g class="intro-atom-ticks" fill="none" stroke="currentColor" stroke-width="1" stroke-opacity="0.3">
+        <path d="M120 6v8M120 226v8M6 120h8M226 120h8" />
+      </g>
+      <g class="intro-atom-rings" fill="none" stroke="currentColor">
+        <g transform="rotate(-60 120 120)">
+          <ellipse class="intro-atom-ring" cx="120" cy="120" rx="104" ry="34" />
+          <circle class="intro-atom-electron" r="4.5">
+            <animateMotion dur="7.2s" begin="-2.4s" repeatCount="indefinite">
+              <mpath href="#intro-orbit-path" />
+            </animateMotion>
+          </circle>
+        </g>
+        <g>
+          <ellipse class="intro-atom-ring" cx="120" cy="120" rx="104" ry="34" />
+          <circle class="intro-atom-electron" r="4.5">
+            <animateMotion dur="9.4s" begin="-5.1s" repeatCount="indefinite">
+              <mpath href="#intro-orbit-path" />
+            </animateMotion>
+          </circle>
+        </g>
+        <g transform="rotate(60 120 120)">
+          <ellipse class="intro-atom-ring" cx="120" cy="120" rx="104" ry="34" />
+          <circle class="intro-atom-electron" r="4.5">
+            <animateMotion dur="8.2s" begin="-0.6s" repeatCount="indefinite">
+              <mpath href="#intro-orbit-path" />
+            </animateMotion>
+          </circle>
+        </g>
+      </g>
+      <g class="intro-atom-core">
+        <circle class="intro-atom-nucleus" cx="120" cy="120" r="13" />
+        <circle class="intro-atom-neutron" cx="126" cy="115" r="4.5" />
+      </g>
+      <circle class="intro-atom-halo" cx="120" cy="120" r="20" fill="none" />
+    </svg>
+
+    <p class="intro-veil-kicker">Electron arrangement</p>
+    <p class="intro-veil-word">Sci-lab</p>
+    <p class="intro-veil-sub" id="intro-stage">Filling the K shell</p>
+  </div>
+
+  <div class="intro-veil-foot">
+    <p class="intro-veil-config" id="intro-config">
+      <span>1s<sup>2</sup></span>
+      <span>2s<sup>2</sup></span>
+      <span>2p<sup>6</sup></span>
+      <span>3s<sup>1</sup></span>
+    </p>
+    <p class="intro-veil-count"><span id="intro-percent">000</span><span> / 100</span></p>
+  </div>
+  <span class="intro-veil-bar" aria-hidden="true"><i></i></span>
+</div>
 
 <!-- ============================================================
      TOP BAR — one quiet place to move between sections
      ============================================================ -->
 <header class="topbar" id="topbar">
-  <button class="topbar-brand" id="nav-home" type="button" aria-label="Sci-lamp home">
+  <button class="topbar-brand" id="nav-home" type="button" aria-label="Sci-lab home">
     <span class="brand-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-    <span class="brand-word">Sci—lamp</span>
+    <span class="brand-word">Sci-lab</span>
   </button>
 
   <nav class="topnav" id="topnav-links" aria-label="Sections">
@@ -31,9 +128,9 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg>
       <span>Sandbox</span>
     </button>
-    <button class="topnav-link" type="button" data-nav="nom" aria-label="Nomenclature">
+    <button class="topnav-link" type="button" data-nav="courses" aria-label="Courses">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M9 7h6M9 11h4" /></svg>
-      <span>Nomenclature</span>
+      <span>Courses</span>
     </button>
     <button class="topnav-link" type="button" data-nav="index" aria-label="Compound index">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /><circle cx="18" cy="18" r="1.4" /></svg>
@@ -42,22 +139,37 @@
   </nav>
 
   <div class="topbar-more" id="topbar-more">
+    <button class="topbar-gear lang-toggle" id="nav-lang" type="button" aria-label="Switch to Traditional Chinese" aria-pressed="false" title="Language: English">
+      <span class="lang-toggle-text" aria-hidden="true">EN</span>
+    </button>
+    <button class="topbar-gear theme-toggle" id="nav-theme" type="button" aria-label="Switch to dark theme" aria-pressed="false">
+      <svg class="ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+      <svg class="ico-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.1A8.5 8.5 0 0 1 9.9 3.5a8.5 8.5 0 1 0 10.6 10.6z" /></svg>
+    </button>
     <button class="topbar-gear" id="nav-more" type="button" aria-label="More options" aria-haspopup="true" aria-expanded="false" aria-controls="nav-menu">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+      <span class="asset-ico asset-ico--burger" aria-hidden="true"></span>
     </button>
 
     <div class="nav-menu" id="nav-menu" hidden>
       <p class="nav-menu-kicker">More</p>
+      <button class="nav-menu-item" type="button" data-menu="profile">
+        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.6l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.61 6.9 19.3l.98-5.68L3.75 9.6l5.7-.83z" /></svg></span>
+        <span><strong>Profile &amp; favorites</strong><small>Streaks, badges and saved items</small></span>
+      </button>
+      <button class="nav-menu-item" type="button" data-menu="notes">
+        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6.5 3.5h11A1.5 1.5 0 0 1 19 5v14a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z" /><path d="M9 3.5v17" /><path d="M12 8h4M12 11.5h4M12 15h2.5" /></svg></span>
+        <span><strong>Notes</strong><small>Course pads and loose pages</small></span>
+      </button>
       <button class="nav-menu-item" type="button" data-menu="tutorial">
-        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg></span>
+        <span class="nav-menu-ico" aria-hidden="true"><span class="asset-ico asset-ico--physics"></span></span>
         <span><strong>Tutorial</strong><small>Tour the whole site</small></span>
       </button>
       <button class="nav-menu-item" type="button" data-menu="help">
-        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4" /><path d="M12 17h.01" /></svg></span>
+        <span class="nav-menu-ico" aria-hidden="true"><span class="asset-ico asset-ico--flask"></span></span>
         <span><strong>Help</strong><small>How it works</small></span>
       </button>
       <button class="nav-menu-item" type="button" data-menu="settings" id="nav-settings-toggle" aria-expanded="false" aria-controls="nav-settings">
-        <span class="nav-menu-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg></span>
+        <span class="nav-menu-ico" aria-hidden="true"><span class="asset-ico asset-ico--settings"></span></span>
         <span><strong>Settings</strong><small>Drag sensitivity</small></span>
       </button>
 
@@ -81,11 +193,11 @@
 <!-- ============================================================
      COVER — the editorial front page
      ============================================================ -->
-<main class="cover" id="cover" aria-label="Sci-lamp home">
+<main class="cover is-entering" id="cover" aria-label="Sci-lab home">
   <section class="cover-hero" aria-labelledby="hero-title">
     <div class="hero-copy">
       <p class="hero-kicker"><span class="rule" aria-hidden="true"></span>Interactive field guide &middot; 118 elements</p>
-      <h1 class="hero-title" id="hero-title">Sci<span class="hero-dash">—</span><em>lamp</em></h1>
+      <h1 class="hero-title" id="hero-title">Immerse yourself in <em>the elements</em></h1>
       <p class="hero-sub">A calm visual guide to the elements — explore, name and build.</p>
       <div class="hero-actions">
         <button class="btn btn-solid" type="button" data-open="table">
@@ -97,17 +209,41 @@
     </div>
 
     <div class="hero-art" aria-hidden="true">
-      <span class="hero-chip chip-mint"><small>01</small>H</span>
-      <span class="hero-chip chip-sky"><small>08</small>O</span>
-      <span class="hero-chip chip-blush"><small>26</small>Fe</span>
-      <span class="hero-chip chip-butter"><small>79</small>Au</span>
+      <figure class="hero-frame">
+        <img src="Assets/scilab/noir-matter.jpg" alt="" width="1024" height="1280" />
+        <figcaption class="hero-frame-tag"><span class="orbit-dot"></span>Reactor study &middot; live matter</figcaption>
+      </figure>
+      <div class="hero-shelf">
+        <span class="hero-chip chip-mint"><small>01</small>H</span>
+        <span class="hero-chip chip-sky"><small>08</small>O</span>
+        <span class="hero-chip chip-blush"><small>26</small>Fe</span>
+        <span class="hero-chip chip-butter"><small>79</small>Au</span>
+      </div>
+      <span class="hero-art-caption">Fig. 01 &middot; a study in matter</span>
+    </div>
+  </section>
+
+  <section class="cover-banner" aria-labelledby="rail-title">
+    <header class="rail-head">
+      <div class="rail-head-lead">
+        <p class="rail-kicker" id="rail-title"><span class="rail-tick" aria-hidden="true"></span>Specimen rail</p>
+        <p class="rail-note">A slow rotation through the table</p>
+      </div>
+      <button class="rail-open" type="button" data-open="table">Open the table <span aria-hidden="true">&rarr;</span></button>
+    </header>
+    <div class="rail-viewport" aria-hidden="true">
+      <div class="rail-drift">
+        <div class="rail-track" id="rail-track"></div>
+      </div>
+      <span class="rail-edge rail-edge-left"></span>
+      <span class="rail-edge rail-edge-right"></span>
     </div>
   </section>
 
   <section class="cover-index" aria-labelledby="contents-title">
     <header class="cover-index-head">
       <h2 id="contents-title">Choose a section</h2>
-      <span>Five quiet ways in</span>
+      <span>Six quiet ways in</span>
     </header>
 
     <div class="cover-grid">
@@ -120,18 +256,18 @@
         <span class="cover-card-text">All 118 elements, searchable and heat-mapped.</span>
       </button>
 
-      <button class="cover-card card-sky" type="button" data-open="nom">
+      <button class="cover-card card-sky" type="button" data-open="courses">
         <span class="cover-card-top">
           <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M9 7h6M9 11h4" /></svg></span>
           <span class="cc-go" aria-hidden="true">&nearr;</span>
         </span>
-        <span class="cover-card-title">Nomenclature</span>
-        <span class="cover-card-text">Rules, examples and five short guided paths.</span>
+        <span class="cover-card-title">Courses</span>
+        <span class="cover-card-text">Short, self-paced lessons with saved progress.</span>
       </button>
 
       <button class="cover-card card-blush" type="button" data-open="sandbox">
         <span class="cover-card-top">
-          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 3h6" /><path d="M10 3v6l-5.2 8.2A2 2 0 0 0 6.6 20h10.8a2 2 0 0 0 1.8-2.8L14 9V3" /><path d="M7.5 15h9" /></svg></span>
+          <span class="cover-card-ico" aria-hidden="true"><span class="asset-ico asset-ico--flask"></span></span>
           <span class="cc-go" aria-hidden="true">&nearr;</span>
         </span>
         <span class="cover-card-title">Sandbox</span>
@@ -149,21 +285,33 @@
 
       <button class="cover-card card-lav" type="button" data-open="tutorial">
         <span class="cover-card-top">
-          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M15.5 8.5l-2 5-5 2 2-5z" /></svg></span>
+          <span class="cover-card-ico" aria-hidden="true"><span class="asset-ico asset-ico--physics"></span></span>
           <span class="cc-go" aria-hidden="true">&nearr;</span>
         </span>
         <span class="cover-card-title">Tutorial</span>
         <span class="cover-card-text">A gentle twelve-stop tour of the whole site.</span>
       </button>
+
+      <button class="cover-card cover-card-notes card-lav" type="button" data-open="notes">
+        <span class="cover-card-top">
+          <span class="cover-card-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6.5 3.5h11A1.5 1.5 0 0 1 19 5v14a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19V5a1.5 1.5 0 0 1 1.5-1.5z" /><path d="M9 3.5v17" /><path d="M12 8h4M12 11.5h4M12 15h2.5" /></svg></span>
+          <span class="cc-go" aria-hidden="true">&nearr;</span>
+        </span>
+        <span class="cover-card-title">Field Notes</span>
+        <span class="cover-card-text">A pad for every course, and a loose page for anything else.</span>
+      </button>
     </div>
   </section>
 
   <footer class="cover-foot">
-    <span>Sci—lamp &middot; an independent study project</span>
+    <span><span class="foot-brand">Sci-lab</span> &middot; an independent study project</span>
     <span>Progress stays on this device</span>
     <span>&copy; 2026</span>
   </footer>
 </main>
+
+<!-- opaque paper veil: keeps the menu from showing through while two pages cross-fade -->
+<div class="route-backdrop" id="route-backdrop" aria-hidden="true"></div>
 
 <!-- ============================================================
      PERIODIC TABLE
@@ -190,7 +338,7 @@
   <div class="tools" id="tools">
     <label class="tool-search">
       <span class="sr">Search elements by name, symbol or number</span>
-      <svg class="tool-search-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M16.5 16.5L21 21" /></svg>
+      <span class="tool-search-ico asset-ico asset-ico--search" aria-hidden="true"></span>
       <input type="search" id="search" placeholder="Search an element" autocomplete="off" spellcheck="false" aria-describedby="filter-status" />
     </label>
     <label class="tool-heat">
@@ -211,14 +359,18 @@
   <div class="table-scroll" id="stage">
     <div class="table" id="table"></div>
     <p class="stage-note" id="stage-note" aria-hidden="true">Drag to turn &middot; scroll to zoom</p>
-    <p class="empty-note" id="empty-note" hidden>No elements match — try clearing the filters.</p>
+    <div class="empty-note" id="empty-note" hidden>
+      <span class="empty-art" aria-hidden="true"><img src="Assets/scilab/atom-mark.svg" alt="" width="256" height="256" /></span>
+      <span class="empty-kicker">Nothing here</span>
+      <p>No elements match — try clearing the filters.</p>
+    </div>
   </div>
 
   <div class="hm-legend" id="hm-legend" hidden aria-hidden="true">
     <span class="hm-cap" id="hm-unit"></span>
     <span class="hm-scale">
       <span class="hm-end" id="hm-low"></span>
-      <span class="hm-bar"></span>
+      <span class="hm-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
       <span class="hm-end" id="hm-high"></span>
     </span>
     <span class="hm-null"><i aria-hidden="true"></i>No data</span>
@@ -236,90 +388,879 @@
 </section>
 
 <!-- ============================================================
-     NOMENCLATURE & FORMULA WRITING
+     COURSES
      ============================================================ -->
-<section class="page page-nom" id="page-nom" tabindex="-1" aria-label="Nomenclature and formula writing" aria-hidden="true">
+<section class="page page-courses" id="page-courses" tabindex="-1" aria-label="Courses" aria-hidden="true">
   <header class="page-bar">
     <div class="page-head">
-      <p class="page-kicker">Read &amp; practise</p>
-      <h2 class="page-title">Nomenclature</h2>
+      <p class="page-kicker">Learn</p>
+      <h2 class="page-title">Courses</h2>
     </div>
+    <p class="courses-head-note">Progress saved on this device</p>
   </header>
 
-  <div class="nom-app" id="nom-app">
-    <section class="nom-view nom-entry is-on" id="nom-entry" tabindex="-1" aria-label="Nomenclature start">
-      <p class="nom-kicker">Learning lab</p>
-      <h3 class="nom-lead">Names and formulas, <em>decoded.</em></h3>
-      <p class="nom-sub">Read a short rule, or practise with a guided path.</p>
-
-      <div class="nom-choices">
-        <button class="nom-choice nom-choice-docs" id="nom-go-docs" type="button">
-          <span class="nom-choice-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v16H6.5A2.5 2.5 0 0 0 4 21z" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H19" /><path d="M8 7h7" /><path d="M8 11h5" /></svg>
-          </span>
-          <span class="nom-choice-body">
-            <span class="nom-choice-title">Explore the docs</span>
-            <span class="nom-choice-text">Open one rule at a time.</span>
-            <span class="nom-choice-meta" id="nom-stat-docs">8 handbook sections</span>
-          </span>
-          <span class="nom-choice-go" aria-hidden="true">&rarr;</span>
-        </button>
-
-        <button class="nom-choice nom-choice-paths" id="nom-go-paths" type="button">
-          <span class="nom-choice-ico" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M5 19c0-4 4-4 7-4s7 0 7-4-4-4-7-4-7 0-7-4" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="3" r="2" /><circle cx="12" cy="11" r="1.6" /></svg>
-          </span>
-          <span class="nom-choice-body">
-            <span class="nom-choice-title">Choose a path</span>
-            <span class="nom-choice-text">Four short challenges, with feedback.</span>
-            <span class="nom-choice-meta" id="nom-stat-paths">5 guided paths</span>
-          </span>
-          <span class="nom-choice-go" aria-hidden="true">&rarr;</span>
-        </button>
-      </div>
-
-      <button class="nom-resume" id="nom-resume" type="button" hidden></button>
-      <p class="nom-note">Progress stays in this browser.</p>
-    </section>
-
-    <section class="nom-view nom-docs" id="nom-docs" tabindex="-1" aria-label="Handbook" hidden>
-      <div class="nom-top">
-        <button class="nom-crumb" id="docs-back" type="button">&larr; Start</button>
-        <label class="docs-search">
-          <span class="sr">Search the handbook</span>
-          <input type="search" id="docs-search" placeholder="Search rules and examples" autocomplete="off" spellcheck="false" aria-controls="docs-list" />
-        </label>
-      </div>
-      <div class="docs-nav" id="docs-nav" role="group" aria-label="Jump to a handbook section"></div>
-      <p class="docs-status" id="docs-status" role="status"></p>
-      <div class="docs-list" id="docs-list"></div>
-    </section>
-
-    <section class="nom-view nom-paths" id="nom-paths" tabindex="-1" aria-label="Guided paths" hidden>
-      <div class="nom-top">
-        <button class="nom-crumb" id="paths-back" type="button">&larr; Start</button>
-        <span class="nom-top-note">Progress saves on this device</span>
-      </div>
-      <header class="nom-view-head">
-        <p class="nom-kicker">Guided paths</p>
-        <h3>Pick a trail</h3>
-        <p>Four short challenges, one at a time.</p>
+  <div class="courses-app" id="courses-app">
+    <section class="courses-view courses-landing is-on" id="courses-landing" tabindex="-1" aria-label="Course library">
+      <header class="courses-hero">
+        <p class="courses-kicker">Study at your own pace</p>
+        <h3 class="courses-lead">A short curriculum, <em>in plain language.</em></h3>
+        <p class="courses-sub">Beginner, intermediate and advanced courses in chemistry — each broken into small sections you can finish in a sitting. Progress stays in this browser.</p>
+        <div class="courses-hero-stats">
+          <div class="courses-overall">
+            <span class="courses-overall-label">Overall progress</span>
+            <div class="courses-meter" id="courses-overall-bar" role="progressbar" aria-label="Overall course progress" aria-valuemin="0" aria-valuemax="112" aria-valuenow="0"><span id="courses-overall-fill"></span></div>
+            <span class="courses-overall-text" id="courses-overall-text">0 of 112 sections</span>
+          </div>
+          <aside class="courses-streak" id="courses-streak" aria-live="polite">
+            <span class="courses-streak-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5c2.3 3.1 5.1 4.5 5.1 8.1a5.1 5.1 0 0 1-10.2 0c0-1.7.7-2.9 1.8-4.1.2 1.4.8 2.2 1.7 2.6.5-2.4.7-4.3 1.6-6.6z" /><path d="M12 12.2c1.1 1.2 1.7 2 1.7 3.2a1.7 1.7 0 0 1-3.4 0c0-1.2.6-2 1.7-3.2z" /></svg></span>
+            <span class="courses-streak-copy">
+              <strong id="courses-streak-count">1 day</strong>
+              <small id="courses-streak-note">Daily streak</small>
+            </span>
+            <span class="courses-streak-dots" id="courses-streak-dots" aria-hidden="true"></span>
+          </aside>
+        </div>
+        <aside class="courses-hero-art" aria-hidden="true">
+          <figure class="asset-plate asset-plate--measure"><img src="Assets/scilab/measurement-study.svg" alt="" width="480" height="600" /></figure>
+          <span class="asset-note asset-note--a"><span class="asset-ico asset-ico--calculator"></span>10 short sections</span>
+          <span class="asset-note asset-note--b"><span class="asset-ico asset-ico--edit"></span>Interactive quiz</span>
+          <span class="asset-caption">Fig. 02 &middot; measured, twice</span>
+        </aside>
       </header>
-      <div class="paths-grid" id="paths-grid"></div>
+
+      <div class="courses-levels">
+        <section class="courses-level level-beginner" aria-labelledby="level-beginner-heading">
+          <header class="level-head">
+            <span class="level-swatch" aria-hidden="true"></span>
+            <h4 id="level-beginner-heading">Beginner</h4>
+            <span class="level-head-count">6 courses</span>
+          </header>
+          <div class="course-grid">
+            <article class="course-card is-openable level-beginner" data-course-card="measurement-units">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--calculator" aria-hidden="true"></span> Beginner &middot; Foundations</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Measurement, Units, and Significant Figures</h5>
+              <p class="course-card-text">Read a measurement correctly, convert units with confidence and round every answer to the right number of significant figures.</p>
+              <div class="course-card-meta">
+                <span>10 sections</span>
+                <span>About 40 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Measurement, Units, and Significant Figures progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="measurement-units">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-beginner" data-course-card="atomic-structure">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--physics" aria-hidden="true"></span> Beginner &middot; Foundations</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Atomic Structure and Electron Configuration</h5>
+              <p class="course-card-text">Build the atom from its particles, then follow electrons into shells, subshells and orbitals.</p>
+              <div class="course-card-meta">
+                <span>13 sections</span>
+                <span>About 50 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Atomic Structure and Electron Configuration progress" aria-valuemin="0" aria-valuemax="13" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="atomic-structure">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-beginner" data-course-card="periodic-trends">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--physics" aria-hidden="true"></span> Beginner &middot; Foundations</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Periodic Trends</h5>
+              <p class="course-card-text">Read the table like a map: how size, ionisation energy and electronegativity shift across periods and down groups.</p>
+              <div class="course-card-meta">
+                <span>11 sections</span>
+                <span>About 35 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Periodic Trends progress" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="periodic-trends">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-beginner" data-course-card="chemical-bonding">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--flask" aria-hidden="true"></span> Beginner &middot; Foundations</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Chemical Bonding</h5>
+              <p class="course-card-text">Why atoms join: ionic transfer, covalent sharing, metallic seas and the forces that hold molecules together.</p>
+              <div class="course-card-meta">
+                <span>11 sections</span>
+                <span>About 35 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Chemical Bonding progress" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="chemical-bonding">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-beginner" data-course-card="states-matter">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--physics" aria-hidden="true"></span> Beginner &middot; Matter</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">States of Matter and Phase Changes</h5>
+              <p class="course-card-text">From crystal lattices to supercritical fluids: why solids hold, liquids flow, gases fill and matter changes phase.</p>
+              <div class="course-card-meta">
+                <span>11 sections</span>
+                <span>About 35 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="States of Matter and Phase Changes progress" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="states-matter">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-beginner" data-course-card="reaction-types">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--flask" aria-hidden="true"></span> Beginner &middot; Reactions</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Chemical Reactions and Reaction Types</h5>
+              <p class="course-card-text">Read an equation, balance it and name what happened: synthesis, decomposition, replacement, combustion and redox.</p>
+              <div class="course-card-meta">
+                <span>11 sections</span>
+                <span>About 35 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Chemical Reactions and Reaction Types progress" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="reaction-types">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <section class="courses-level level-intermediate" aria-labelledby="level-intermediate-heading">
+          <header class="level-head">
+            <span class="level-swatch" aria-hidden="true"></span>
+            <h4 id="level-intermediate-heading">Intermediate</h4>
+            <span class="level-head-count">3 courses</span>
+          </header>
+          <div class="course-grid">
+            <article class="course-card is-openable level-intermediate" data-course-card="stoichiometry">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--flask" aria-hidden="true"></span> Intermediate &middot; Reactions</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Stoichiometry and the Mole Concept</h5>
+              <p class="course-card-text">Count particles by weighing them, balance equations and predict the limiting reactant and the yield.</p>
+              <div class="course-card-meta">
+                <span>13 sections</span>
+                <span>About 45 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Stoichiometry and the Mole Concept progress" aria-valuemin="0" aria-valuemax="13" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="stoichiometry">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-intermediate" data-course-card="solubility">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--flask" aria-hidden="true"></span> Intermediate &middot; Equilibrium</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Solubility and Precipitation</h5>
+              <p class="course-card-text">Predict when a salt precipitates: write Ksp expressions, calculate molar solubility and compare Q with Ksp.</p>
+              <div class="course-card-meta">
+                <span>10 sections</span>
+                <span>About 35 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Solubility and Precipitation progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="solubility">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+
+            <article class="course-card is-openable level-intermediate" data-course-card="acids-bases">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--calculator" aria-hidden="true"></span> Intermediate &middot; Equilibrium</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Acids, Bases, and pH</h5>
+              <p class="course-card-text">Work with pH, Ka and Kb, then keep a buffer steady and read a titration curve with confidence.</p>
+              <div class="course-card-meta">
+                <span>11 sections</span>
+                <span>About 40 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Acids, Bases, and pH progress" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="acids-bases">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+          </div>
+        </section>
+
+        <section class="courses-level level-advanced" aria-labelledby="level-advanced-heading">
+          <header class="level-head">
+            <span class="level-swatch" aria-hidden="true"></span>
+            <h4 id="level-advanced-heading">Advanced</h4>
+            <span class="level-head-count">1 course</span>
+          </header>
+          <div class="course-grid">
+            <article class="course-card is-openable level-advanced" data-course-card="electrolysis">
+              <div class="course-card-top">
+                <span class="course-card-level"><span class="asset-ico asset-ico--physics" aria-hidden="true"></span> Advanced &middot; Electrochemistry</span>
+                <span class="course-card-status" data-course-percent>0%</span>
+              </div>
+              <h5 class="course-card-title">Electrolysis</h5>
+              <p class="course-card-text">Drive non-spontaneous redox with current, choose the ion that discharges and calculate what deposits.</p>
+              <div class="course-card-meta">
+                <span>11 sections</span>
+                <span>About 40 min</span>
+              </div>
+              <div class="course-progress" role="progressbar" aria-label="Electrolysis progress" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" data-course-progress>
+                <span data-course-fill></span>
+              </div>
+              <button class="course-open" type="button" data-course-open="electrolysis">
+                <span data-course-cta>Start course</span>
+                <span aria-hidden="true">&rarr;</span>
+              </button>
+            </article>
+          </div>
+        </section>
+      </div>
     </section>
 
-    <section class="nom-view nom-runner" id="nom-runner" tabindex="-1" aria-label="Guided path" hidden>
-      <div class="nom-top">
-        <button class="nom-crumb" id="runner-back" type="button">&larr; Paths</button>
-        <span class="runner-meta" id="runner-meta"></span>
-        <button class="nom-crumb runner-restart" id="runner-restart" type="button">Restart</button>
+    <section class="courses-view course-reader level-beginner" id="course-reader" tabindex="-1" aria-labelledby="course-title" hidden>
+      <div class="course-player" id="course-player">
+        <button class="course-player-back" id="course-back" type="button" aria-label="Back to all courses" title="All courses">
+          <span aria-hidden="true">&larr;</span>
+          <span class="course-player-back-label">All courses</span>
+        </button>
+        <div class="course-player-pick">
+          <select id="course-select" aria-label="Choose a course"></select>
+          <span class="course-player-chevron" aria-hidden="true"></span>
+        </div>
+        <div class="course-player-pick">
+          <select id="section-select" aria-label="Choose a section"></select>
+          <span class="course-player-chevron" aria-hidden="true"></span>
+        </div>
+        <div class="course-player-step">
+          <button class="course-player-arrow" id="course-prev" type="button" aria-label="Previous section" title="Previous section"><span aria-hidden="true">&larr;</span></button>
+          <button class="course-player-arrow" id="course-next" type="button" aria-label="Next section" title="Next section"><span aria-hidden="true">&rarr;</span></button>
+        </div>
+        <button class="course-player-note" id="course-notes" type="button" aria-label="Course notes" title="Course notes">
+          <span class="asset-ico asset-ico--edit" aria-hidden="true"></span>
+          <span class="course-player-note-label">Notes</span>
+          <span class="course-notes-count" id="course-notes-count" aria-hidden="true" hidden>0</span>
+        </button>
       </div>
-      <header class="runner-head">
-        <h3 id="runner-title"></h3>
-        <div class="runner-dots" id="runner-dots" aria-hidden="true"></div>
-        <p class="sr" id="runner-progress" role="status"></p>
+
+      <header class="course-hero">
+        <p class="course-level-tag level-beginner" id="course-level-tag">Beginner &middot; Foundations</p>
+        <h3 class="course-title" id="course-title" tabindex="-1">Measurement, Units, and Significant Figures</h3>
+        <p class="course-deck" id="course-deck">A practical first course in reading measurements, converting units and keeping significant figures honest.</p>
+        <aside class="course-hero-art" aria-hidden="true">
+          <figure class="asset-plate asset-plate--ferrum"><img id="course-hero-image" src="Assets/scilab/element-ferrum.svg" alt="" width="512" height="512" /></figure>
+          <div class="course-hero-chips">
+            <span><span class="asset-ico asset-ico--calculator"></span>Worked examples</span>
+            <span><span class="asset-ico asset-ico--edit"></span>Interactive quiz</span>
+            <span><span class="asset-ico asset-ico--check"></span>Progress saved</span>
+          </div>
+        </aside>
+        <div class="course-progress-row">
+          <div class="course-progress" id="course-progress-bar" role="progressbar" aria-label="Course progress" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><span id="course-progress-fill"></span></div>
+          <span class="course-progress-text" id="course-progress-text">0 of 10 sections</span>
+          <button class="course-reset" id="course-reset" type="button">Reset progress</button>
+        </div>
       </header>
-      <div class="runner-stage" id="runner-stage"></div>
+
+      <div class="course-body" id="course-body-measurement">
+      <div class="lesson-list" id="lesson-list">
+        <article class="lesson" id="lesson-1" data-lesson="1" aria-labelledby="lesson-1-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">01</span>
+            <h3 class="lesson-title" id="lesson-1-title">What is a measurement?</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <p>A measurement is <strong>a number plus a unit</strong>:</p>
+            <blockquote>12.5 cm, 3.0 kg, 250 mL</blockquote>
+            <div class="concept-strip" aria-label="A measurement combines a number, a unit and an uncertainty">
+              <span class="concept-chip"><small>Number</small><strong>24.3</strong></span>
+              <span class="concept-op" aria-hidden="true">+</span>
+              <span class="concept-chip"><small>Unit</small><strong>mL</strong></span>
+              <span class="concept-op" aria-hidden="true">+</span>
+              <span class="concept-chip"><small>Uncertainty</small><strong>&plusmn; 0.1</strong></span>
+            </div>
+            <p>A number without a unit is usually meaningless in chemistry. Every measurement also has <strong>uncertainty</strong>: the last digit is estimated or limited by the instrument.</p>
+            <p class="course-example">Example: A graduated cylinder marked every 1 mL might let you estimate to 0.1 mL. You might read <strong>24.3 mL</strong>. The “.3” is estimated.</p>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="1" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-2" data-lesson="2" aria-labelledby="lesson-2-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">02</span>
+            <h3 class="lesson-title" id="lesson-2-title">SI units and prefixes</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <p>Chemistry uses the <strong>SI system</strong> (International System of Units).</p>
+
+            <h4>Common SI base units</h4>
+            <div class="course-table-wrap">
+              <table class="course-table">
+                <thead>
+                  <tr><th>Quantity</th><th>Unit</th><th>Symbol</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Length</td><td>meter</td><td>m</td></tr>
+                  <tr><td>Mass</td><td>kilogram</td><td>kg</td></tr>
+                  <tr><td>Time</td><td>second</td><td>s</td></tr>
+                  <tr><td>Temperature</td><td>kelvin</td><td>K</td></tr>
+                  <tr><td>Amount of substance</td><td>mole</td><td>mol</td></tr>
+                  <tr><td>Electric current</td><td>ampere</td><td>A</td></tr>
+                  <tr><td>Luminous intensity</td><td>candela</td><td>cd</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4>Common derived units</h4>
+            <div class="course-table-wrap">
+              <table class="course-table">
+                <thead>
+                  <tr><th>Quantity</th><th>Unit</th><th>Symbol</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Force</td><td>newton</td><td>N</td></tr>
+                  <tr><td>Energy</td><td>joule</td><td>J</td></tr>
+                  <tr><td>Pressure</td><td>pascal</td><td>Pa</td></tr>
+                  <tr><td>Power</td><td>watt</td><td>W</td></tr>
+                  <tr><td>Volume</td><td>cubic meter</td><td>m<sup>3</sup></td></tr>
+                  <tr><td>Concentration</td><td>molarity</td><td>mol/L = M</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h4>Metric prefixes you should know</h4>
+            <div class="course-table-wrap">
+              <table class="course-table">
+                <thead>
+                  <tr><th>Prefix</th><th>Symbol</th><th>Meaning</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>kilo-</td><td>k</td><td>10<sup>3</sup> = 1000</td></tr>
+                  <tr><td>centi-</td><td>c</td><td>10<sup>−2</sup> = 1/100</td></tr>
+                  <tr><td>milli-</td><td>m</td><td>10<sup>−3</sup> = 1/1000</td></tr>
+                  <tr><td>micro-</td><td>µ</td><td>10<sup>−6</sup></td></tr>
+                  <tr><td>nano-</td><td>n</td><td>10<sup>−9</sup></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>Examples:</p>
+            <ul>
+              <li>1 km = 1000 m</li>
+              <li>1 cm = 0.01 m</li>
+              <li>1 mm = 0.001 m</li>
+              <li>1 µL = 10<sup>−6</sup> L</li>
+              <li>1 nm = 10<sup>−9</sup> m</li>
+            </ul>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="2" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-3" data-lesson="3" aria-labelledby="lesson-3-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">03</span>
+            <h3 class="lesson-title" id="lesson-3-title">Unit conversions: the factor-label method</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <p>Use conversion factors so units cancel.</p>
+
+            <h4>Example 1: Convert 25 cm to meters</h4>
+            <div class="math-block">\[
+25\ \text{cm} \times \frac{1\ \text{m}}{100\ \text{cm}} = 0.25\ \text{m}
+\]</div>
+
+            <h4>Example 2: Convert 3.5 kg to grams</h4>
+            <div class="math-block">\[
+3.5\ \text{kg} \times \frac{1000\ \text{g}}{1\ \text{kg}} = 3500\ \text{g} = 3.5 \times 10^3\ \text{g}
+\]</div>
+
+            <h4>Example 3: Convert 2.0 mL to liters</h4>
+            <div class="math-block">\[
+2.0\ \text{mL} \times \frac{1\ \text{L}}{1000\ \text{mL}} = 0.0020\ \text{L}
+\]</div>
+
+            <p class="course-tip"><span><strong>Beginner tip:</strong> Write the units in the calculation. If the unwanted unit does not cancel, flip the conversion factor.</span></p>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="3" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-4" data-lesson="4" aria-labelledby="lesson-4-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">04</span>
+            <h3 class="lesson-title" id="lesson-4-title">Accuracy vs. precision</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <ul>
+              <li><strong>Accuracy</strong> = how close a measurement is to the true value.</li>
+              <li><strong>Precision</strong> = how close repeated measurements are to each other.</li>
+            </ul>
+            <div class="accuracy-visual" aria-hidden="true">
+              <figure class="target-card">
+                <span class="target target--tight"><i></i><i></i><i></i><i></i><i></i></span>
+                <figcaption>Precise, not accurate</figcaption>
+              </figure>
+              <span class="target-vs">vs</span>
+              <figure class="target-card">
+                <span class="target target--centre"><i></i><i></i><i></i><i></i><i></i></span>
+                <figcaption>Accurate and precise</figcaption>
+              </figure>
+            </div>
+            <p>A measurement can be precise but inaccurate if the instrument is badly calibrated.</p>
+            <p class="course-example">Example: A balance reads 5.00 g, 5.01 g, 4.99 g for the same object, but the true mass is 5.50 g. The measurements are precise but not accurate.</p>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="4" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-5" data-lesson="5" aria-labelledby="lesson-5-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">05</span>
+            <h3 class="lesson-title" id="lesson-5-title">Significant figures: what they are</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <p><strong>Significant figures</strong> are the digits in a measurement that carry meaningful information about precision.</p>
+            <p>They include all certain digits plus <strong>one estimated digit</strong>.</p>
+
+            <h4>Counting rules</h4>
+            <div class="course-table-wrap">
+              <table class="course-table course-table-wide">
+                <thead>
+                  <tr><th>Rule</th><th>Example</th><th>Sig figs</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Nonzero digits are significant</td><td>123</td><td>3</td></tr>
+                  <tr><td>Zeros between nonzero digits are significant</td><td>1002</td><td>4</td></tr>
+                  <tr><td>Leading zeros are <strong>not</strong> significant</td><td>0.0045</td><td>2</td></tr>
+                  <tr><td>Trailing zeros after a decimal point are significant</td><td>2.00</td><td>3</td></tr>
+                  <tr><td>Trailing zeros in a whole number with no decimal are ambiguous</td><td>500</td><td>1, 2, or 3?</td></tr>
+                  <tr><td>Use scientific notation to remove ambiguity</td><td>\(5.00 \times 10^2\)</td><td>3</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p>More examples:</p>
+            <ul>
+              <li><strong>0.00450</strong> → 3 sig figs: the 4, 5, and final 0 are significant.</li>
+              <li><strong>1.050</strong> → 4 sig figs.</li>
+              <li><strong>0.02030</strong> → 4 sig figs.</li>
+              <li><strong>100.0</strong> → 4 sig figs.</li>
+            </ul>
+            <p><strong>Exact numbers</strong> have unlimited sig figs. Examples: counted objects (12 eggs), definitions (1 m = 100 cm), and conversion factors.</p>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="5" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-6" data-lesson="6" aria-labelledby="lesson-6-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">06</span>
+            <h3 class="lesson-title" id="lesson-6-title">Significant figures in calculations</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <h4>Multiplication and division</h4>
+            <p>The answer has the <strong>same number of sig figs as the measurement with the fewest sig figs</strong>.</p>
+            <p>Example:</p>
+            <div class="math-block">\[
+4.56 \times 1.2 = 5.472
+\]</div>
+            <ul>
+              <li>4.56 has 3 sig figs.</li>
+              <li>1.2 has 2 sig figs.</li>
+              <li>Answer must have 2 sig figs.</li>
+            </ul>
+            <div class="math-block">\[
+5.472 \rightarrow 5.5
+\]</div>
+
+            <h4>Addition and subtraction</h4>
+            <p>The answer has the <strong>same number of decimal places as the measurement with the fewest decimal places</strong>.</p>
+            <p>Example:</p>
+            <div class="math-block">\[
+12.11 + 18.0 + 1.013 = 31.123
+\]</div>
+            <ul>
+              <li>12.11 has 2 decimal places.</li>
+              <li>18.0 has 1 decimal place.</li>
+              <li>1.013 has 3 decimal places.</li>
+            </ul>
+            <p>The limiting value has <strong>1 decimal place</strong>, so:</p>
+            <div class="math-block">\[
+31.123 \rightarrow 31.1
+\]</div>
+
+            <h4>Mixed operations</h4>
+            <p>Do the operations, keep track of sig figs, and round only at the end.</p>
+            <p>Example:</p>
+            <div class="math-block">\[
+(2.50 + 1.2) \times 3.0
+\]</div>
+            <p>First addition:</p>
+            <div class="math-block">\[
+2.50 + 1.2 = 3.70 \rightarrow 3.7
+\]</div>
+            <p>Then multiplication:</p>
+            <div class="math-block">\[
+3.7 \times 3.0 = 11.1 \rightarrow 11
+\]</div>
+            <p>The final answer has <strong>2 sig figs</strong> because 3.0 has 2 sig figs.</p>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="6" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-7" data-lesson="7" aria-labelledby="lesson-7-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">07</span>
+            <h3 class="lesson-title" id="lesson-7-title">Rounding: quick rules</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <p>Look at the first digit you are dropping:</p>
+            <ul>
+              <li>If it is <strong>less than 5</strong>, keep the last kept digit the same.</li>
+              <li>If it is <strong>greater than 5</strong>, increase the last kept digit by 1.</li>
+              <li>If it is exactly <strong>5</strong>, follow your instructor’s rule. Many courses use “round to the nearest even digit”; others use “round up.” Be consistent with your course.</li>
+            </ul>
+            <p>Examples:</p>
+            <ul>
+              <li>5.472 to 2 sig figs → <strong>5.5</strong></li>
+              <li>31.123 to 1 decimal place → <strong>31.1</strong></li>
+              <li>0.004567 to 2 sig figs → <strong>0.0046</strong></li>
+            </ul>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="7" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-8" data-lesson="8" aria-labelledby="lesson-8-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">08</span>
+            <h3 class="lesson-title" id="lesson-8-title">Scientific notation and sig figs</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <p>Scientific notation makes sig figs clear.</p>
+            <ul>
+              <li>\(5.00 \times 10^2\) has 3 sig figs.</li>
+              <li>\(5.0 \times 10^2\) has 2 sig figs.</li>
+              <li>\(5 \times 10^2\) has 1 sig fig.</li>
+            </ul>
+            <p>Use scientific notation when trailing zeros are ambiguous.</p>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="8" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-9" data-lesson="9" aria-labelledby="lesson-9-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">09</span>
+            <h3 class="lesson-title" id="lesson-9-title">Quick quiz</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <div class="mcq-summary">
+              <span class="asset-ico asset-ico--edit" aria-hidden="true"></span>
+              <div class="mcq-summary-copy">
+                <strong>Ten quick checks</strong>
+                <span>Pick an answer. A wrong choice gives you a hint.</span>
+              </div>
+              <div class="mcq-meter" id="mcq-bar" role="progressbar" aria-label="Quiz questions answered correctly" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><span id="mcq-fill"></span></div>
+              <span class="mcq-count" id="mcq-count">0 / 10</span>
+            </div>
+
+            <ol class="mcq-list" id="mcq-list">
+              <li class="mcq" data-mcq="1" data-answer="1" data-hint="Leading zeros hold the decimal place but never count. Start at the 3." data-explain="3, 4 and the trailing 0 are significant — 3 sig figs.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">01</span>
+                  <p class="mcq-q" id="mcq-q-1">How many sig figs are in <strong>0.00340</strong>?</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-1">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">2</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">3</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">4</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">5</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="2" data-answer="1" data-hint="A zero after a decimal point is part of the measurement." data-explain="1, 2, 0 and 0 are all significant — 4 sig figs.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">02</span>
+                  <p class="mcq-q" id="mcq-q-2">How many sig figs are in <strong>120.0</strong>?</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-2">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">3</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">4</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">5</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">6</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="3" data-answer="1" data-hint="Divide by 100, and keep all three significant figures." data-explain="45.0 cm ÷ 100 = 0.450 m. The trailing zero keeps three sig figs.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">03</span>
+                  <p class="mcq-q" id="mcq-q-3">Convert <strong>45.0 cm</strong> to meters.</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-3">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">0.045 m</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">0.450 m</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">4.50 m</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">450 m</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="4" data-answer="1" data-hint="Multiply by 1000; the volume grows." data-explain="0.750 L × 1000 = 750. mL, or 7.50 × 10² mL.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">04</span>
+                  <p class="mcq-q" id="mcq-q-4">Convert <strong>0.750 L</strong> to milliliters.</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-4">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">75.0 mL</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">750. mL</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">7,500 mL</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">0.0750 mL</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="5" data-answer="2" data-hint="The limiting measurement has two sig figs." data-explain="2.5 × 3.42 = 8.55, which rounds to 8.6.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">05</span>
+                  <p class="mcq-q" id="mcq-q-5">Calculate and round: <strong>2.5 × 3.42</strong></p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-5">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">8.5</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">8.55</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">8.6</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">9.0</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="6" data-answer="2" data-hint="Line up decimal places; 0.3 has one." data-explain="10.0 + 2.55 + 0.3 = 12.85, which rounds to 12.9.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">06</span>
+                  <p class="mcq-q" id="mcq-q-6">Calculate and round: <strong>10.0 + 2.55 + 0.3</strong></p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-6">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">12.8</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">12.85</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">12.9</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">13.0</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="7" data-answer="1" data-hint="Density is mass divided by volume." data-explain="12.5 ÷ 5.0 = 2.5 g/mL. Both measurements have two sig figs.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">07</span>
+                  <p class="mcq-q" id="mcq-q-7">A sample has mass <strong>12.5 g</strong> and volume <strong>5.0 mL</strong>. What is its density?</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-7">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">0.40 g/mL</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">2.5 g/mL</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">2.50 g/mL</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">62.5 g/mL</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="8" data-answer="1" data-hint="Move the decimal five places right and round to two sig figs." data-explain="0.0000567 = 5.67 × 10⁻⁵, which rounds to 5.7 × 10⁻⁵.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">08</span>
+                  <p class="mcq-q" id="mcq-q-8">Write <strong>0.0000567</strong> in scientific notation with 2 sig figs.</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-8">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">5.67 × 10<sup>−5</sup></span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">5.7 × 10<sup>−5</sup></span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">5.7 × 10<sup>−4</sup></span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">57 × 10<sup>−6</sup></span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="9" data-answer="3" data-hint="No decimal point means the trailing zeros could be placeholders." data-explain="Without a decimal, 500 is ambiguous. Scientific notation makes the count explicit.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">09</span>
+                  <p class="mcq-q" id="mcq-q-9">How many sig figs are in <strong>500</strong> when it is written without a decimal point?</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-9">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">1, always</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">2, always</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">3, always</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">Ambiguous — write it in scientific notation</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+
+              <li class="mcq" data-mcq="10" data-answer="2" data-hint="Add 273.15 to the Celsius value." data-explain="25 + 273.15 = 298.15 K, which rounds to 298 K at two sig figs.">
+                <div class="mcq-head">
+                  <span class="mcq-n" aria-hidden="true">10</span>
+                  <p class="mcq-q" id="mcq-q-10">Convert <strong>25 °C</strong> to kelvin.</p>
+                </div>
+                <div class="mcq-options" role="group" aria-labelledby="mcq-q-10">
+                  <button class="mcq-opt" type="button" data-choice="0"><span class="mcq-key">A</span><span class="mcq-val">248 K</span></button>
+                  <button class="mcq-opt" type="button" data-choice="1"><span class="mcq-key">B</span><span class="mcq-val">273 K</span></button>
+                  <button class="mcq-opt" type="button" data-choice="2"><span class="mcq-key">C</span><span class="mcq-val">298 K</span></button>
+                  <button class="mcq-opt" type="button" data-choice="3"><span class="mcq-key">D</span><span class="mcq-val">323 K</span></button>
+                </div>
+                <div class="mcq-feedback" role="status" hidden><span class="mcq-feedback-ico" aria-hidden="true"></span><p></p></div>
+              </li>
+            </ol>
+
+            <div class="mcq-foot">
+              <span class="mcq-foot-note" id="mcq-note">Answers are saved on this device.</span>
+              <button class="course-cta is-quiet" id="mcq-clear" type="button">Clear quiz answers</button>
+            </div>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="9" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+
+        <article class="lesson" id="lesson-10" data-lesson="10" aria-labelledby="lesson-10-title">
+          <header class="lesson-head">
+            <span class="lesson-num" aria-hidden="true">10</span>
+            <h3 class="lesson-title" id="lesson-10-title">Beginner checklist</h3>
+            <span class="lesson-state" aria-hidden="true">Completed</span>
+          </header>
+          <div class="lesson-body">
+            <ul class="course-checklist">
+              <li>Always write the <strong>unit</strong>.</li>
+              <li>Use <strong>conversion factors</strong> so units cancel.</li>
+              <li>Count sig figs correctly: leading zeros do <strong>not</strong> count.</li>
+              <li>Multiplication/division → fewest <strong>sig figs</strong>.</li>
+              <li>Addition/subtraction → fewest <strong>decimal places</strong>.</li>
+              <li>Round only at the <strong>end</strong> of a multistep calculation.</li>
+              <li>Use scientific notation to avoid ambiguity.</li>
+              <li>Remember: measurements have <strong>uncertainty</strong>, and sig figs express that precision.</li>
+            </ul>
+          </div>
+          <footer class="lesson-foot">
+            <button class="lesson-done" data-complete="10" type="button" aria-pressed="false">
+              <span class="lesson-done-box" aria-hidden="true"></span>
+              <span class="lesson-done-label">Mark as complete</span>
+            </button>
+            <span class="lesson-foot-note">Saved in this browser</span>
+          </footer>
+        </article>
+      </div>
+
+      <footer class="course-finish">
+        <p class="lesson-kicker"><span class="asset-ico asset-ico--heart" aria-hidden="true"></span> End of course</p>
+        <h4>Measurement, Units, and Significant Figures</h4>
+        <p id="course-finish-text">0 of 10 sections complete. Mark each section as you finish it.</p>
+        <div class="course-finish-actions">
+          <button class="course-cta" id="course-finish-back" type="button">&larr; Back to all courses</button>
+          <button class="course-cta is-quiet" id="course-finish-top" type="button">Back to top</button>
+        </div>
+      </footer>
+      </div>
+
+      <div class="course-body" id="course-body-atomic" hidden></div>
+      <div class="course-body" id="course-body-periodic-trends" hidden></div>
+      <div class="course-body" id="course-body-chemical-bonding" hidden></div>
+      <div class="course-body" id="course-body-stoichiometry" hidden></div>
+      <div class="course-body" id="course-body-electrolysis" hidden></div>
+      <div class="course-body" id="course-body-solubility" hidden></div>
+      <div class="course-body" id="course-body-acids-bases" hidden></div>
+      <div class="course-body" id="course-body-states-matter" hidden></div>
+      <div class="course-body" id="course-body-reaction-types" hidden></div>
     </section>
   </div>
 </section>
@@ -349,13 +1290,21 @@
 
         <div class="sb-workspace" id="sb-workspace" aria-label="Reaction mixture. Drop elements here.">
           <div class="sb-atoms" id="sb-atoms"></div>
-          <p class="sb-empty" id="sb-empty">Tap an element, then combine.</p>
+          <p class="sb-empty" id="sb-empty">
+            <svg class="sb-empty-mark" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 7h12M20 7v11L9.5 36.2A4 4 0 0 0 13 42h22a4 4 0 0 0 3.5-5.8L28 18V7" />
+              <path d="M15 31h18" opacity=".55" />
+              <circle cx="21" cy="36.5" r="1.7" fill="currentColor" stroke="none" />
+              <circle cx="27.5" cy="34.5" r="1.2" fill="currentColor" stroke="none" />
+            </svg>
+            <span>Drag an element onto the bench.</span>
+          </p>
         </div>
 
         <p class="sb-recipe" id="sb-recipe">Nothing on the bench yet.</p>
 
         <div class="sb-result" id="sb-result" role="status" aria-live="polite">
-          <p class="sb-result-empty">Add a few atoms, then press Combine.</p>
+          <p class="sb-result-empty"><span class="asset-ico asset-ico--physics" aria-hidden="true"></span><span>Add a few atoms, then press Combine.</span></p>
         </div>
 
         <div class="sb-actions">
@@ -371,13 +1320,14 @@
           </div>
           <button class="tool-btn sb-reset" id="sb-reset" type="button">Clear bench</button>
         </div>
+        <p class="sb-save-status" id="sb-save-status" role="status" aria-live="polite"></p>
       </section>
 
       <aside class="sandbox-side">
         <section class="sb-panel sb-palette-panel" aria-labelledby="sb-palette-h">
           <div class="sb-panel-head">
             <h3 id="sb-palette-h">Elements</h3>
-            <span class="sb-panel-note">Tap to add &middot; drag to the bench</span>
+            <span class="sb-panel-note">Drag to add &middot; click to inspect</span>
           </div>
           <div class="sb-palette" id="sb-palette" role="group" aria-label="Element palette"></div>
         </section>
@@ -403,20 +1353,25 @@
       </aside>
     </div>
 
-    <section class="sb-shelf" id="sb-shelf" aria-labelledby="sb-shelf-h">
-      <div class="sb-shelf-head">
-        <div class="sb-shelf-title">
-          <h3 id="sb-shelf-h">My products</h3>
-          <span class="sb-shelf-count" id="sb-shelf-count">0 saved</span>
+    <section class="sb-manual" id="sb-manual" aria-labelledby="sb-manual-h">
+      <header class="sb-manual-head">
+        <div class="sb-manual-intro">
+          <p class="sb-manual-kicker">Field notebook &middot; hints, not answers</p>
+          <h3 id="sb-manual-h">The discovery manual</h3>
+          <p class="sb-manual-sub">Short hints for every compound and alloy. The bench is the answer key.</p>
         </div>
-        <div class="sb-shelf-tools">
-          <button class="sb-text-btn" id="sb-shelf-index" type="button">Compound index</button>
-          <button class="sb-text-btn is-danger" id="sb-shelf-clear" type="button">Clear all</button>
+        <div class="sb-manual-status">
+          <span class="sb-manual-count" id="sb-manual-count">0 / 61 found</span>
+          <div class="sb-manual-bar" id="sb-manual-bar" role="progressbar" aria-label="Catalogued products discovered" aria-valuemin="0" aria-valuemax="61" aria-valuenow="0"><span id="sb-manual-fill"></span></div>
+          <button class="sb-manual-toggle" id="sb-manual-toggle" type="button" aria-expanded="true" aria-controls="sb-manual-body">Hide manual</button>
         </div>
+      </header>
+      <div class="sb-manual-body" id="sb-manual-body">
+        <div class="sb-manual-tabs" id="sb-manual-tabs" role="tablist" aria-label="Discovery manual chapters"></div>
+        <div class="sb-manual-panels" id="sb-manual-panels"></div>
       </div>
-      <div class="sb-shelf-list" id="sb-shelf-list"></div>
-      <p class="sb-save-status" id="sb-save-status" role="status" aria-live="polite"></p>
     </section>
+
   </div>
 </section>
 
@@ -434,15 +1389,178 @@
 
   <div class="index-app">
     <header class="index-intro">
-      <p class="nom-kicker">Field guide</p>
+      <p class="index-kicker">Field guide</p>
       <h3 class="index-lead">Every compound the bench can make.</h3>
-      <p class="index-sub">Build one in the sandbox to reveal its name.</p>
+      <p class="index-sub">Every product the bench saves is kept here. Build one to reveal its name.</p>
       <div class="index-meter">
         <div class="index-bar" role="progressbar" aria-labelledby="index-progress-text" aria-valuemin="0" aria-valuemax="61" aria-valuenow="0" id="index-bar"><span id="index-fill"></span></div>
         <button class="sb-text-btn" id="index-sandbox" type="button">Open the sandbox</button>
       </div>
+      <div class="index-filters" id="index-filters" role="group" aria-label="Filter compounds by category"></div>
     </header>
     <div class="index-grid" id="index-grid"></div>
+  </div>
+</section>
+
+<!-- ============================================================
+     PROFILE — streak, badges and starred elements/compounds
+     ============================================================ -->
+<section class="page page-profile" id="page-profile" tabindex="-1" aria-label="Profile and favorites" aria-hidden="true">
+  <header class="page-bar">
+    <div class="page-head">
+      <p class="page-kicker">Notebook</p>
+      <h2 class="page-title">Profile</h2>
+    </div>
+    <p class="profile-head-note" id="profile-head-note">Saved on this device</p>
+  </header>
+
+  <div class="profile-app">
+    <header class="profile-hero">
+      <div class="profile-intro">
+        <span class="profile-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="3.4" /><ellipse cx="24" cy="24" rx="19" ry="8" /><ellipse cx="24" cy="24" rx="19" ry="8" transform="rotate(60 24 24)" opacity=".62" /><ellipse cx="24" cy="24" rx="19" ry="8" transform="rotate(120 24 24)" opacity=".34" /></svg>
+        </span>
+        <div class="profile-intro-copy">
+          <p class="profile-kicker">Field notebook</p>
+          <h3 class="profile-lead">Your quiet record of <em>curiosity.</em></h3>
+          <p class="profile-sub">A daily streak, a shelf of badges and every element or compound you have starred — kept in this browser, never on a server.</p>
+        </div>
+      </div>
+
+      <aside class="profile-streak-card" aria-labelledby="profile-streak-label">
+        <span class="profile-flame" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5c2.3 3.1 5.1 4.5 5.1 8.1a5.1 5.1 0 0 1-10.2 0c0-1.7.7-2.9 1.8-4.1.2 1.4.8 2.2 1.7 2.6.5-2.4.7-4.3 1.6-6.6z" /><path d="M12 12.2c1.1 1.2 1.7 2 1.7 3.2a1.7 1.7 0 0 1-3.4 0c0-1.2.6-2 1.7-3.2z" /></svg></span>
+        <span class="profile-streak-number" id="profile-streak-count">1</span>
+        <span class="profile-streak-word" id="profile-streak-label">day streak</span>
+        <small class="profile-streak-best" id="profile-streak-best">Best: 1 day</small>
+        <div class="profile-week" id="profile-week" aria-hidden="true"></div>
+      </aside>
+    </header>
+
+    <div class="profile-stats" aria-label="Your totals">
+      <article class="profile-stat stat-mint">
+        <span class="profile-stat-value" id="profile-stat-discoveries">0</span>
+        <span class="profile-stat-label">Compounds discovered</span>
+      </article>
+      <article class="profile-stat stat-sky">
+        <span class="profile-stat-value" id="profile-stat-products">0</span>
+        <span class="profile-stat-label">Products saved</span>
+      </article>
+      <article class="profile-stat stat-butter">
+        <span class="profile-stat-value" id="profile-stat-quiz">0</span>
+        <span class="profile-stat-label">Checks answered</span>
+      </article>
+      <article class="profile-stat stat-blush">
+        <span class="profile-stat-value" id="profile-stat-favorites">0</span>
+        <span class="profile-stat-label">Favorites</span>
+      </article>
+    </div>
+
+    <section class="profile-section" aria-labelledby="profile-badges-title">
+      <header class="profile-section-head">
+        <div>
+          <p class="profile-section-kicker">Milestones</p>
+          <h3 id="profile-badges-title">Achievements</h3>
+        </div>
+        <span class="profile-section-count" id="profile-badge-count">0 of 6</span>
+      </header>
+      <div class="profile-badges" id="profile-badges"></div>
+    </section>
+
+    <section class="profile-section" aria-labelledby="profile-favorites-title">
+      <header class="profile-section-head">
+        <div>
+          <p class="profile-section-kicker">Saved</p>
+          <h3 id="profile-favorites-title">Favorites</h3>
+        </div>
+        <span class="profile-section-count" id="profile-fav-count">0 starred</span>
+      </header>
+      <div class="favorites-list" id="favorites-list"></div>
+    </section>
+  </div>
+</section>
+
+<!-- ============================================================
+     NOTES — a pad per course, and loose pages in between
+     ============================================================ -->
+<section class="page page-notes" id="page-notes" tabindex="-1" aria-label="Notes" aria-hidden="true">
+  <header class="page-bar">
+    <div class="page-head">
+      <p class="page-kicker">Notebook</p>
+      <h2 class="page-title">Notes</h2>
+    </div>
+    <p class="notes-head-note" id="notes-head-note">Saved on this device</p>
+  </header>
+
+  <div class="notes-app" id="notes-app">
+    <header class="notes-hero">
+      <span class="notes-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48">
+          <path d="M13 6.5h20.5A2.5 2.5 0 0 1 36 9v30a2.5 2.5 0 0 1-2.5 2.5H13A2.5 2.5 0 0 1 10.5 39V9A2.5 2.5 0 0 1 13 6.5z" />
+          <path d="M17 6.5v35" />
+          <path d="M22 15h8M22 21h8M22 27h5" />
+        </svg>
+      </span>
+      <div class="notes-intro">
+        <p class="notes-kicker">Field notes</p>
+        <h3 class="notes-lead" id="notes-lead">Write in the <em>margins.</em></h3>
+        <p class="notes-sub">A pad for each course, and a loose page for everything else. Your notes stay in this browser — never on a server.</p>
+        <p class="notes-tally" id="notes-tally">No notes yet.</p>
+      </div>
+    </header>
+
+    <section class="notes-compose" id="notes-compose" aria-labelledby="notes-compose-title">
+      <header class="notes-compose-head">
+        <div class="notes-compose-heading">
+          <p class="notes-compose-kicker" id="notes-compose-kicker">New page</p>
+          <h3 id="notes-compose-title" tabindex="-1">Start a note</h3>
+        </div>
+        <span class="notes-save-state" id="notes-save-state" role="status" aria-live="polite">Saved on this device</span>
+      </header>
+
+      <div class="notes-fields">
+        <label class="notes-field notes-field-title">
+          <span>Title</span>
+          <input id="note-title" type="text" maxlength="120" placeholder="A title for this page" autocomplete="off" />
+        </label>
+        <label class="notes-field notes-field-course">
+          <span>Notebook</span>
+          <select id="note-course"></select>
+        </label>
+      </div>
+
+      <label class="notes-field notes-field-body">
+        <span>Note</span>
+        <textarea id="note-body" rows="5" maxlength="6000" placeholder="Write it while it's fresh…"></textarea>
+      </label>
+
+      <div class="notes-compose-foot">
+        <span class="notes-char-count" id="notes-char-count">0 / 6000</span>
+        <div class="notes-compose-actions">
+          <button class="notes-cancel" id="notes-cancel" type="button" hidden>Cancel</button>
+          <button class="notes-save" id="notes-save" type="button">Save note</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes-library" aria-labelledby="notes-library-title">
+      <header class="notes-library-head">
+        <div>
+          <p class="notes-library-kicker">Notebook</p>
+          <h3 id="notes-library-title">Saved notes</h3>
+        </div>
+        <div class="notes-library-tools">
+          <span class="notes-library-count" id="notes-library-count">0 notes</span>
+          <label class="notes-filter">
+            <span class="sr">Filter notes</span>
+            <select id="notes-filter">
+              <option value="all">All notes</option>
+              <option value="loose">Loose pages</option>
+            </select>
+          </label>
+        </div>
+      </header>
+      <div class="notes-list" id="notes-list" data-no-i18n></div>
+    </section>
   </div>
 </section>
 
@@ -529,18 +1647,31 @@
   </section>
 </div>
 
-<div class="reveal" id="reveal" aria-hidden="true"></div>
+<div class="route-loader" id="route-loader" aria-hidden="true"><i></i></div>
 
 <script src="elements.js"></script>
 <script src="extended.js"></script>
-<script src="learn-data.js"></script>
+<script src="chem.js"></script>
 <script src="compounds.js"></script>
+<script src="i18n.js"></script>
 <script src="store.js"></script>
+<script src="fx.js"></script>
 <script src="sandbox-data.js"></script>
+<script src="element-art.js"></script>
 <script src="script.js"></script>
-<script src="nom-page.js"></script>
+<script src="atomic-course.js"></script>
+<script src="science-courses.js"></script>
+<script src="measurement-zh.js"></script>
+<script src="matter-courses.js"></script>
+<script src="courses.js"></script>
+<script src="notes.js"></script>
 <script src="sandbox.js"></script>
+<script src="sandbox-manual.js"></script>
 <script src="index-page.js"></script>
+<script src="profile.js"></script>
+<script src="banner.js"></script>
+<script src="intro.js"></script>
+<script src="reveal.js"></script>
 <script src="tutorial.js"></script>
 </body>
 </html>

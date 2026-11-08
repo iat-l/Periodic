@@ -13,8 +13,8 @@
    The resolver in sandbox-data.js matches a normalised atom
    multiset against `atoms` first. Only if no catalog entry fits
    does it fall back to generic charge balancing or a generic
-   alloy. The index page and the product shelf read this same
-   table, so compound text is never written twice.
+   alloy. The index page reads this same table, so
+   compound text is never written twice.
    ============================================================ */
 
 const COMPOUNDS = [

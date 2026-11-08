@@ -1,8 +1,8 @@
 /* Sandbox mode — a bench over the periodic table page.
    Atoms accumulate as a multiset; the resolver in sandbox-data.js decides what the
-   mixture makes. Every successful product is saved through SciLampStore, catalog
-   discoveries light up the compound index, and the shelf below the bench keeps the
-   full collection. The table stays mounted underneath, so its state survives. */
+   mixture makes. Every successful product is saved through SciLampStore and
+   catalog discoveries light up the compound index, which is the only place the
+   collection is shown. The table stays mounted underneath, so its state survives. */
 
 (() => {
   const sandbox = document.getElementById('sandbox');
@@ -12,6 +12,50 @@
 
   const STORE_KEY = 'scilamp.sandbox.v1';
   const CHALLENGES = SB.CHALLENGES;
+  const I18N = window.SciLampI18n;
+  const t = (en, zh) => I18N?.t(en, zh) ?? en;
+  const symName = (sym, fallback = '') => I18N?.elementName(sym) || fallback;
+  const productName = (product) => I18N?.compoundName(product) || product.name;
+
+  /* challenge wordings live here so both languages stay answer-free */
+  const CHALLENGE_TEXT = {
+    alloy: {
+      en: ['Make any alloy', 'Two metals walk onto the bench. What do they become when they cool together?'],
+      zh: ['做出任何一種合金', '兩種金屬走上實驗台。冷卻之後，它們會變成什麼？'],
+    },
+    ionic: {
+      en: ['Create an ionic compound', 'One gives, one takes. Who is left holding the charge?'],
+      zh: ['做出一種離子化合物', '一個給，一個拿。最後是誰抱著電荷？'],
+    },
+    'two-one': {
+      en: ['Build a 2:1 ionic compound', 'One negative ion wants two positive partners. Can you arrange the guest list?'],
+      zh: ['做出 2:1 的離子化合物', '一個陰離子想要兩位陽離子作伴。你能排好這份賓客名單嗎？'],
+    },
+    covalent: {
+      en: ['Create a covalent molecule', 'Two nonmetals refuse to give up electrons. What do they do instead?'],
+      zh: ['做出一個共價分子', '兩種非金屬都不肯交出電子。那它們會怎麼做？'],
+    },
+    oxygen: {
+      en: ['Build a product containing oxygen', 'Which breathable element wants to join almost anything on the bench?'],
+      zh: ['做出含氧的產物', '哪一種可呼吸的元素，幾乎什麼都想加入？'],
+    },
+    halide: {
+      en: ['Make an ionic halide', 'A salt with a halogen’s name hidden inside — who will hold the other end?'],
+      zh: ['做出離子鹵化物', '一種藏著鹵素名字的鹽——另一端會由誰握住？'],
+    },
+    'three-elements': {
+      en: ['Build a compound from three elements', 'Three different elements in one compound: perhaps oxygen, a metal and the lightest atom.'],
+      zh: ['用三種元素做出化合物', '一個化合物裡有三種不同元素：也許是氧、一種金屬，還有最輕的原子。'],
+    },
+  };
+  const challengeTitle = (challenge) => {
+    const text = CHALLENGE_TEXT[challenge.id];
+    return text ? (I18N?.isZh ? text.zh[0] : text.en[0]) : challenge.title;
+  };
+  const challengeHint = (challenge) => {
+    const text = CHALLENGE_TEXT[challenge.id];
+    return text ? (I18N?.isZh ? text.zh[1] : text.en[1]) : challenge.hint;
+  };
 
   const atomsEl = document.getElementById('sb-atoms');
   const emptyEl = document.getElementById('sb-empty');
@@ -29,11 +73,6 @@
   const progressText = document.getElementById('sb-progress-text');
   const challengesEl = document.getElementById('sb-challenges');
   const hintline = document.getElementById('sb-hintline');
-  const shelfEl = document.getElementById('sb-shelf');
-  const shelfList = document.getElementById('sb-shelf-list');
-  const shelfCount = document.getElementById('sb-shelf-count');
-  const shelfIndex = document.getElementById('sb-shelf-index');
-  const shelfClear = document.getElementById('sb-shelf-clear');
   const saveStatus = document.getElementById('sb-save-status');
 
   /* ---------- persistence ---------- */
@@ -68,11 +107,11 @@
   let activeChallenge = (CHALLENGES.find((c) => !done.includes(c.id)) || {}).id || null;
   let open = false;
   let tablePrevAria = null;
-  let highlightKey = null;
-  let lastAlternatives = [];
-  let lastRecipe = null;
-  let clearArmed = false;
-  let clearTimer = null;
+  let lastProduct = null;
+  let lastInfo = null;
+  let lastFailure = false;
+  let freshSym = null;
+  let freshTimer = 0;
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const elementRecord = (sym) => ELEMENTS.find((e) => e[1] === sym) || null;
@@ -84,16 +123,29 @@
       const el = SB.EL(sym);
       if (!el) return '';
       return `<button class="sb-chip" type="button" draggable="true" data-symbol="${el.symbol}" data-cat="${el.cat}"
-        aria-label="Add one ${el.name} atom, element ${el.number}">
+        aria-label="${t(`Drag one ${el.name} atom to the bench; press Enter to add one`, `把一顆${symName(el.symbol, el.name)}原子拖到實驗台；按 Enter 加入一顆`)}">
+        <span class="sb-chip-mark" aria-hidden="true"></span>
         <span class="sb-chip-num">${el.number}</span>
         <span class="sb-chip-sym">${el.symbol}</span>
-        <span class="sb-chip-name">${el.name}</span>
+        <span class="sb-chip-name">${symName(el.symbol, el.name)}</span>
       </button>`;
     }).join('');
 
     paletteEl.querySelectorAll('.sb-chip').forEach((chip) => {
       const sym = chip.dataset.symbol;
-      chip.addEventListener('click', () => addAtom(sym));
+      chip.style.setProperty('--mark', SciLampArt.forMark(sym));
+      /* a click only opens the notes; adding to the bench is a deliberate drag */
+      chip.addEventListener('click', () => {
+        inspected = sym;
+        paintSelection();
+        paintInfo();
+      });
+      chip.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (event.repeat) return;
+        event.preventDefault();
+        addAtom(sym);
+      });
       chip.addEventListener('dragstart', (event) => {
         event.dataTransfer.setData('text/plain', sym);
         event.dataTransfer.effectAllowed = 'copy';
@@ -117,7 +169,10 @@
   function paintInfo() {
     if (!inspected) {
       infoFullBtn.disabled = true;
-      infoEl.innerHTML = '<p class="sb-info-empty">Tap an element to read what it is, how it behaves and where it is used. Adding it to the bench also selects it.</p>';
+      infoEl.innerHTML = `<p class="sb-info-empty">
+        <svg class="sb-info-empty-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.4" /><path d="m15.4 15.4 4.8 4.8" /><circle cx="10.5" cy="10.5" r="1.5" fill="currentColor" stroke="none" /></svg>
+        <span>${t('Click an element to read what it is, how it behaves and where it is used. Drag it onto the bench to add an atom.', '點一個元素，讀它是什麼、有什麼性質、用在哪裡。把它拖到實驗台上就能加入一顆原子。')}</span>
+      </p>`;
       return;
     }
     const el = SB.EL(inspected);
@@ -128,14 +183,14 @@
       <div class="sb-info-head">
         <span class="sb-info-sym" data-cat="${el.cat}">${el.symbol}</span>
         <span class="sb-info-titles">
-          <strong>${el.name}</strong>
-          <span>${CATEGORIES[el.cat]} · ${state} at 25 °C</span>
+          <strong>${symName(el.symbol, el.name)}</strong>
+          <span>${I18N?.categoryName(el.cat) || CATEGORIES[el.cat]} · ${I18N?.stateName(state) || state} ${t('at 25 °C', '在 25 °C')}</span>
         </span>
       </div>
-      <p class="sb-info-desc">${el.description}</p>
+      <p class="sb-info-desc">${I18N?.elementDescription(el.symbol) || el.description}</p>
       <dl class="sb-info-facts">
-        <div><dt>Mass</dt><dd>${el.mass} u</dd></div>
-        <div><dt>Oxidation</dt><dd>${el.oxidation}</dd></div>
+        <div><dt>${t('Mass', '質量')}</dt><dd>${el.mass} u</dd></div>
+        <div><dt>${t('Oxidation', '氧化態')}</dt><dd>${el.oxidation}</dd></div>
       </dl>`;
   }
 
@@ -147,16 +202,18 @@
 
   function benchLine() {
     const syms = benchSymbols();
-    if (!syms.length) return 'Nothing on the bench yet.';
-    return `${syms.map((s) => `${bench.get(s)} ${s}`).join(' + ')} — check the process, then combine.`;
+    if (!syms.length) return t('Nothing on the bench yet.', '實驗台上還沒有東西。');
+    return `${syms.map((s) => `${bench.get(s)} ${s}`).join(' + ')} ${t('— check the process, then combine.', '——檢查製程，然後按結合。')}`;
   }
 
   function paintCount() {
     const total = benchTotal();
     const kinds = bench.size;
     atomCountEl.textContent = total
-      ? `${total} atom${total === 1 ? '' : 's'} · ${kinds} element${kinds === 1 ? '' : 's'}`
-      : 'empty bench';
+      ? (I18N?.isZh
+        ? `${total} 顆原子 · ${kinds} 種元素`
+        : `${total} atom${total === 1 ? '' : 's'} · ${kinds} element${kinds === 1 ? '' : 's'}`)
+      : t('empty bench', '空實驗台');
     recipeEl.textContent = benchLine();
   }
 
@@ -167,18 +224,24 @@
     atomsEl.innerHTML = syms.map((sym) => {
       const el = SB.EL(sym);
       const n = bench.get(sym);
-      return `<div class="sb-atom" data-cat="${el.cat}" data-sym="${sym}">
-        <button class="sb-atom-x" type="button" data-remove="${sym}" aria-label="Remove ${el.name} from the bench">&times;</button>
+      const fresh = sym === freshSym ? ' is-fresh' : '';
+      return `<div class="sb-atom${fresh}" data-cat="${el.cat}" data-sym="${sym}">
+        <span class="sb-atom-mark" aria-hidden="true"></span>
+        <button class="sb-atom-x" type="button" data-remove="${sym}" aria-label="${t(`Remove ${el.name} from the bench`, `從實驗台移除${symName(el.symbol, el.name)}`)}">&times;</button>
         <span class="sb-atom-sym">${el.symbol}</span>
-        <span class="sb-atom-name">${el.name}</span>
+        <span class="sb-atom-name">${symName(el.symbol, el.name)}</span>
         <span class="sb-stepper">
-          <button type="button" data-step="-1" data-sym="${sym}" aria-label="Remove one ${el.name} atom">&minus;</button>
+          <button type="button" data-step="-1" data-sym="${sym}" aria-label="${t(`Remove one ${el.name} atom`, `移除一顆${symName(el.symbol, el.name)}原子`)}">&minus;</button>
           <span class="sb-atom-n" aria-hidden="true">${n}</span>
-          <button type="button" data-step="1" data-sym="${sym}" aria-label="Add one ${el.name} atom">+</button>
+          <button type="button" data-step="1" data-sym="${sym}" aria-label="${t(`Add one ${el.name} atom`, `加入一顆${symName(el.symbol, el.name)}原子`)}">+</button>
         </span>
-        <span class="sr">${n} ${el.name} atom${n === 1 ? '' : 's'} on the bench</span>
+        <span class="sr">${I18N?.isZh ? `${n} 顆${symName(el.symbol, el.name)}原子在實驗台上` : `${n} ${el.name} atom${n === 1 ? '' : 's'} on the bench`}</span>
       </div>`;
     }).join('');
+
+    atomsEl.querySelectorAll('.sb-atom').forEach((atom) => {
+      atom.style.setProperty('--mark', SciLampArt.forMark(atom.dataset.sym));
+    });
 
     paintCount();
   }
@@ -187,6 +250,8 @@
     renderAtoms();
     paintSelection();
     paintInfo();
+    /* the bench changed, so any result on screen no longer describes it */
+    paintIdle();
   }
 
   function focusAfterAtomChange(sym, step) {
@@ -198,18 +263,29 @@
     if (chip) chip.focus({ preventScroll: true });
   }
 
+  function markFresh(sym) {
+    freshSym = sym;
+    clearTimeout(freshTimer);
+    freshTimer = setTimeout(() => { freshSym = null; }, 460);
+  }
+
   function addAtom(sym, { quiet = false } = {}) {
     if (!SB.PALETTE.includes(sym)) return;
     bench.set(sym, Math.min(99, (bench.get(sym) || 0) + 1));
     inspected = sym;
+    markFresh(sym);
     paintBench();
-    if (!quiet) saveStatus.textContent = `Added one ${SB.EL(sym).name.toLowerCase()} atom.`;
+    if (!quiet) {
+      const name = symName(sym, SB.EL(sym).name);
+      saveStatus.textContent = I18N?.isZh ? `加入了一顆${name}原子。` : `Added one ${SB.EL(sym).name.toLowerCase()} atom.`;
+    }
   }
 
   function stepAtom(sym, delta) {
     const next = (bench.get(sym) || 0) + delta;
     if (next <= 0) bench.delete(sym);
     else bench.set(sym, Math.min(99, next));
+    markFresh(sym);
     paintBench();
     focusAfterAtomChange(sym, delta);
   }
@@ -219,7 +295,9 @@
     paintBench();
     const chip = paletteEl.querySelector(`.sb-chip[data-symbol="${sym}"]`);
     if (chip) chip.focus({ preventScroll: true });
-    saveStatus.textContent = `${SB.EL(sym).name} removed from the bench.`;
+    saveStatus.textContent = I18N?.isZh
+      ? `已從實驗台移除${symName(sym, SB.EL(sym).name)}。`
+      : `${SB.EL(sym).name} removed from the bench.`;
   }
 
   function setBench(atoms) {
@@ -257,115 +335,113 @@
 
   const defaultResult = () => {
     resultEl.className = 'sb-result';
-    resultEl.innerHTML = '<p class="sb-result-empty">Add a few atoms, then press Combine.</p>';
+    const ready = benchTotal() > 0;
+    const message = ready
+      ? t('Ready when you are — press Combine.', '準備好了就按「結合」。')
+      : t('Add a few atoms, then press Combine.', '加幾顆原子，然後按「結合」。');
+    const icon = `<svg class="sb-result-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
+      <ellipse cx="12" cy="12" rx="9.5" ry="4" />
+      <ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(60 12 12)" opacity=".55" />
+    </svg>`;
+    resultEl.innerHTML = `<p class="sb-result-empty">${icon}<span>${message}</span></p>`;
   };
 
   function paintIdle() {
+    lastProduct = null;
+    lastInfo = null;
+    lastFailure = false;
     defaultResult();
   }
 
-  function paintNote(text) {
-    resultEl.className = 'sb-result is-note';
-    resultEl.innerHTML = '';
-    const p = document.createElement('p');
-    p.className = 'sb-result-note';
-    p.textContent = text;
-    resultEl.appendChild(p);
-  }
-
-  function alternativesHtml(list) {
-    if (!list || !list.length) return '';
-    return `<p class="sb-alt-line">Also possible with these elements:
-      ${list.map((alt, i) => `<button class="sb-alt" type="button" data-alt="${i}">${alt.formula} · ${alt.name}</button>`).join(' ')}
-    </p>`;
-  }
-
-  function paintFailure(result) {
-    lastAlternatives = result.alternatives ? result.alternatives.slice() : [];
-    lastRecipe = result.recipe || null;
-    if (lastRecipe) {
-      lastAlternatives = [];
-      resultEl.className = 'sb-result is-bad';
-      resultEl.innerHTML = `
-        <p class="sb-result-kicker">Charges do not balance</p>
-        <p class="sb-result-text" id="sb-fail-text"></p>
-        <p class="sb-alt-line"><button class="sb-alt" type="button" data-recipe="1">load the ${lastRecipe.formula} recipe</button></p>`;
-      resultEl.querySelector('#sb-fail-text').textContent = result.message;
-      return;
-    }
-    lastAlternatives = result.alternatives ? result.alternatives.slice() : [];
+  function paintFailure() {
+    lastProduct = null;
+    lastInfo = null;
+    lastFailure = true;
     resultEl.className = 'sb-result is-bad';
-    const buttons = lastAlternatives
-      .map((alt, i) => `<button class="sb-alt" type="button" data-alt="${i}">${alt.formula} · ${alt.name}</button>`)
-      .join(' ');
-    resultEl.innerHTML = `<p class="sb-result-kicker">No product under these rules</p><p class="sb-result-text" id="sb-fail-text"></p>${
-      buttons ? `<p class="sb-alt-line">Try instead: ${buttons}</p>` : ''
-    }`;
-    resultEl.querySelector('#sb-fail-text').textContent = result.message;
+    resultEl.innerHTML = `
+      <p class="sb-result-kicker">${t('Not quite', '差一點')}</p>
+      <p class="sb-result-text">${t('That mixture does not form a product here. Change the atoms and try again.', '這個組合在這裡不會形成產物。換幾顆原子再試一次。')}</p>`;
   }
 
-  function paintProduct(product, info) {
-    lastAlternatives = (product.alternatives || []).filter((alt) => alt.formula !== product.formula);
-    lastRecipe = null;
+  function paintProduct(product, info, announce = true) {
+    lastProduct = product;
+    lastInfo = info;
+    lastFailure = false;
     resultEl.className = 'sb-result is-good';
-    const kind = product.diatomic ? 'Diatomic element' : SB.KIND_LABEL[product.kind];
-    const ratio = product.ratio ? ` &middot; ${product.ratio[0]}:${product.ratio[1]} ions` : '';
-    const units = product.units > 1 ? ` &middot; ${product.units} units` : '';
+    const kind = product.diatomic ? t('Diatomic element', '雙原子元素') : I18N?.kindLabel(product.kind) || SB.KIND_LABEL[product.kind];
+    const ratio = product.ratio
+      ? t(` &middot; ${product.ratio[0]}:${product.ratio[1]} ions`, ` &middot; ${product.ratio[0]}:${product.ratio[1]} 離子`)
+      : '';
+    const units = product.units > 1
+      ? t(` &middot; ${product.units} units`, ` &middot; ${product.units} 個單位`)
+      : '';
     const winsHtml = info.wins.length
-      ? `<p class="sb-win">Challenge complete — ${info.wins.map((id) => CHALLENGES.find((c) => c.id === id).title).join(', ')}</p>`
+      ? `<p class="sb-win">${t('Challenge complete —', '挑戰完成——')} ${info.wins.map((id) => challengeTitle(CHALLENGES.find((c) => c.id === id))).join(I18N?.isZh ? '、' : ', ')}</p>`
       : '';
     const savedText = info.firstDiscovery
-      ? 'First discovery — saved to my products and lit in the compound index.'
+      ? t('First discovery — kept in the compound index.', '首次發現——已保存在化合物索引。')
       : info.isNew
-        ? 'Saved to my products.'
-        : 'Already in my products — saved again with a new timestamp.';
+        ? t('Saved to the compound index.', '已保存在化合物索引。')
+        : t('Already saved — the index keeps one entry per compound.', '先前已保存——索引中每個化合物只保留一筆。');
+
+    const favorite = window.SciLampFx ? SciLampFx.productRecord(product) : null;
+    const starred = favorite && window.SciLampStore ? SciLampStore.isFavorite(favorite.id) : false;
+    const starLabel = starred
+      ? t('Remove from favorites', '從收藏移除')
+      : t('Save to favorites', '收藏');
+    const copyLabel = t('Copy a shareable summary', '複製可分享的摘要');
+    const tools = favorite
+      ? `<div class="sb-actions">
+          <button class="icon-btn${starred ? ' is-on' : ''}" type="button" data-fav-product
+            aria-pressed="${starred}" aria-label="${starLabel}" title="${starLabel}">
+            <svg class="icon-star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.61 6.9 19.3l.98-5.68L3.75 9.6l5.7-.83z"/></svg>
+          </button>
+          <button class="icon-btn" type="button" data-copy-product aria-label="${copyLabel}" title="${copyLabel}">
+            <svg class="icon-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="10" height="10" rx="1.8"/><path d="M5.5 14.5V5.5h9"/></svg>
+            <svg class="icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7.2"/></svg>
+          </button>
+        </div>`
+      : '';
+
     resultEl.innerHTML = `
       <p class="sb-result-kicker">${kind}${ratio}${units}</p>
       <p class="sb-formula">${product.formula}</p>
-      <p class="sb-name">${product.name}</p>
-      <p class="sb-result-text">${product.why || product.note}</p>
-      <p class="sb-saved">&#10003; ${savedText}</p>
-      ${winsHtml}
-      ${alternativesHtml(lastAlternatives)}`;
+      <p class="sb-name">${productName(product)}</p>
+      <p class="sb-result-text">${I18N?.compoundText(product)?.why || product.why || product.note}</p>
+      <p class="sb-saved"><span>&#10003; ${savedText}</span><button class="sb-index-link" type="button" data-open-index>${t('Open the compound index', '打開化合物索引')} &rarr;</button></p>
+      ${tools}
+      ${winsHtml}`;
 
-    saveStatus.textContent = info.firstDiscovery
-      ? `${product.name} discovered and saved.`
-      : info.isNew
-        ? `${product.name} saved to my products.`
-        : `${product.name} was already saved; the saved entry was updated.`;
+    if (announce && window.SciLampFx) {
+      resultEl.classList.add('is-fresh');
+      setTimeout(() => resultEl.classList.remove('is-fresh'), 640);
+      SciLampFx.burstAt(resultEl, { count: info.wins.length || info.firstDiscovery ? 34 : 20 });
+    }
+
+    const name = productName(product);
+    if (announce) {
+      saveStatus.textContent = info.firstDiscovery
+        ? (I18N?.isZh ? `已發現並保存${name}，可在化合物索引查看。` : `${name} discovered and saved to the compound index.`)
+        : info.isNew
+          ? (I18N?.isZh ? `${name}已保存到化合物索引。` : `${name} saved to the compound index.`)
+          : (I18N?.isZh ? `${name}先前已保存；索引中的資料已更新。` : `${name} was already saved; its index entry is up to date.`);
+    }
   }
-
-  resultEl.addEventListener('click', (event) => {
-    const altBtn = event.target.closest('[data-alt]');
-    if (altBtn) {
-      const alt = lastAlternatives[Number(altBtn.dataset.alt)];
-      if (!alt) return;
-      setBench(alt.atoms);
-      paintNote(`Bench set to ${benchLine().replace(' — check the process, then combine.', '')} for ${alt.formula} (${alt.name}). Press combine to try it.`);
-      saveStatus.textContent = `Bench set for ${alt.formula}.`;
-      combineBtn.focus({ preventScroll: true });
-      return;
-    }
-    const recipeBtn = event.target.closest('[data-recipe]');
-    if (recipeBtn && lastRecipe) {
-      const { cation, anion, nCat, nAn, formula } = lastRecipe;
-      setBench({ [cation]: nCat, [anion]: nAn });
-      paintNote(`Recipe loaded: ${nCat} ${cation} + ${nAn} ${anion} for ${formula}. Press combine.`);
-      saveStatus.textContent = `Recipe for ${formula} loaded.`;
-      combineBtn.focus({ preventScroll: true });
-    }
-  });
 
   /* ---------- challenges ---------- */
 
-  function renderChallenges() {
+  function renderChallenges(freshWins = []) {
     challengesEl.innerHTML = CHALLENGES.map((c) => {
       const isDone = done.includes(c.id);
       const active = activeChallenge === c.id;
-      return `<button class="sb-chal${isDone ? ' is-done' : ''}${active ? ' is-active' : ''}" type="button"
-        data-chal="${c.id}" aria-pressed="${active}" aria-label="${c.title}${isDone ? ', completed' : ''}">
+      const title = challengeTitle(c);
+      const label = isDone ? t(`${title}, completed`, `${title}，已完成`) : title;
+      const fresh = freshWins.includes(c.id) ? ' is-fresh' : '';
+      return `<button class="sb-chal${isDone ? ' is-done' : ''}${active ? ' is-active' : ''}${fresh}" type="button"
+        data-chal="${c.id}" aria-pressed="${active}" aria-label="${label}">
         <span class="sb-chal-mark" aria-hidden="true">${isDone ? '&check;' : ''}</span>
-        <span class="sb-chal-title">${c.title}</span>
+        <span class="sb-chal-title">${title}</span>
       </button>`;
     }).join('');
 
@@ -383,7 +459,9 @@
     const total = CHALLENGES.length;
     scoreEl.textContent = `${done.length} / ${total}`;
     fillEl.style.width = `${(done.length / total) * 100}%`;
-    progressText.textContent = `${done.length} of ${total} challenges complete.`;
+    progressText.textContent = I18N?.isZh
+      ? `已完成 ${done.length} / ${total} 項挑戰。`
+      : `${done.length} of ${total} challenges complete.`;
   }
 
   function renderHint() {
@@ -391,12 +469,15 @@
     hintline.hidden = false;
     if (!active) {
       hintline.innerHTML = done.length === CHALLENGES.length
-        ? '<strong>All seven challenges complete.</strong> Keep combining — the bench is yours.'
-        : 'Pick a challenge to see its hint.';
+        ? (I18N?.isZh
+          ? '<strong>七項挑戰全部完成。</strong>繼續結合——實驗台是你的。'
+          : '<strong>All seven challenges complete.</strong> Keep combining — the bench is yours.')
+        : t('Pick a challenge to see its hint.', '選一項挑戰來看看提示。');
       return;
     }
     const isDone = done.includes(active.id);
-    hintline.innerHTML = `<span class="sb-hint-kicker">${isDone ? 'completed goal' : 'current goal'}</span><strong>${active.title}</strong> — ${active.hint}`;
+    const kicker = isDone ? t('completed goal', '已完成的目標') : t('current goal', '目前的目標');
+    hintline.innerHTML = `<span class="sb-hint-kicker">${kicker}</span><strong>${challengeTitle(active)}</strong> — ${challengeHint(active)}`;
   }
 
   function runChallenges(product) {
@@ -414,7 +495,7 @@
       const next = CHALLENGES.find((c) => !done.includes(c.id));
       activeChallenge = next ? next.id : null;
     }
-    renderChallenges();
+    renderChallenges(wins);
     renderHint();
     return wins;
   }
@@ -424,8 +505,8 @@
   function combine() {
     const result = SB.resolve(benchAtoms(), process);
     if (!result.ok) {
-      paintFailure(result);
-      saveStatus.textContent = 'No product yet — read the note under the result.';
+      paintFailure();
+      saveStatus.textContent = t('No product formed — change the atoms and try again.', '沒有形成產物——換幾顆原子再試一次。');
       return;
     }
 
@@ -462,14 +543,6 @@
     const wins = runChallenges(product);
     paintProduct(product, { isNew: !existed, firstDiscovery, wins });
 
-    highlightKey = product.key;
-    renderShelf();
-    clearTimeout(renderShelf.highlightTimer);
-    renderShelf.highlightTimer = setTimeout(() => {
-      const hot = shelfList.querySelector('.sb-prod.is-new');
-      if (hot) hot.classList.remove('is-new');
-    }, 2200);
-
     const shouldExplain = firstDiscovery || (!product.compoundId && !existed);
     if (shouldExplain) {
       setTimeout(() => {
@@ -490,7 +563,10 @@
         b.setAttribute('aria-pressed', String(on));
       });
       paintIdle();
-      saveStatus.textContent = `Process set to ${process}.`;
+      const processLabel = I18N?.isZh
+        ? ({ auto: '自動', alloy: '合金', ionic: '離子', covalent: '共價' }[process] || process)
+        : process;
+      saveStatus.textContent = I18N?.isZh ? `製程已設為${processLabel}。` : `Process set to ${process}.`;
     });
   });
 
@@ -498,99 +574,50 @@
     bench.clear();
     paintBench();
     paintIdle();
-    saveStatus.textContent = 'Bench cleared.';
+    saveStatus.textContent = t('Bench cleared.', '實驗台已清空。');
     const first = paletteEl.querySelector('.sb-chip');
     if (first) first.focus({ preventScroll: true });
   });
 
-  /* ---------- shelf ---------- */
-
-  function renderShelf() {
-    if (!window.SciLampStore) return;
-    const items = SciLampStore.products();
-    const now = Date.now();
-    shelfCount.textContent = `${items.length} saved`;
-    shelfClear.disabled = items.length === 0;
-
-    if (!items.length) {
-      shelfList.innerHTML = '<p class="sb-shelf-empty">Nothing saved yet. Every successful combine lands here, kept on this device.</p>';
+  resultEl.addEventListener('click', (event) => {
+    if (event.target.closest('[data-fav-product]') && lastProduct && window.SciLampFx) {
+      const btn = event.target.closest('[data-fav-product]');
+      const active = SciLampFx.toggle(SciLampFx.productRecord(lastProduct));
+      SciLampFx.syncFavorite(btn, active);
+      SciLampFx.pop(btn);
       return;
     }
 
-    shelfList.innerHTML = items.map((p) => {
-      const kind = p.diatomic ? 'Diatomic element' : (SB.KIND_LABEL[p.kind] || 'Compound');
-      const when = p.lastAt && now - p.lastAt < 86400000
-        ? 'today'
-        : p.lastAt
-          ? new Date(p.lastAt).toLocaleDateString()
-          : '';
-      const hot = p.key === highlightKey ? ' is-new' : '';
-      return `<article class="sb-prod${hot}" data-key="${esc(p.key)}">
-        <button class="sb-prod-open" type="button" data-open="${esc(p.key)}" aria-label="Open ${esc(p.name)}, ${esc(p.formula)}">
-          <span class="sb-prod-formula">${esc(p.formula)}</span>
-          <span class="sb-prod-name">${esc(p.name)}</span>
-          <span class="sb-prod-meta">${kind}${p.times > 1 ? ` · saved ${p.times}×` : ''}${when ? ` · ${when}` : ''}</span>
-        </button>
-        <button class="sb-prod-x" type="button" data-remove-product="${esc(p.key)}" aria-label="Remove ${esc(p.name)} from my products">&times;</button>
-      </article>`;
-    }).join('');
-  }
-
-  shelfList.addEventListener('click', (event) => {
-    const openBtn = event.target.closest('[data-open]');
-    if (openBtn) {
-      const item = SciLampStore.products().find((p) => p.key === openBtn.dataset.open);
-      if (item && window.SciLampSheet) SciLampSheet.openProduct(item, { mode: 'detail', trigger: openBtn });
+    if (event.target.closest('[data-copy-product]') && lastProduct && window.SciLampFx) {
+      SciLampFx.copy(SciLampFx.productSummary(lastProduct), event.target.closest('[data-copy-product]'));
       return;
     }
-    const removeBtn = event.target.closest('[data-remove-product]');
-    if (removeBtn) {
-      const key = removeBtn.dataset.removeProduct;
-      const item = SciLampStore.products().find((p) => p.key === key);
-      SciLampStore.removeProduct(key);
-      saveStatus.textContent = item ? `${item.name} removed from my products.` : 'Product removed.';
-      renderShelf();
-      const next = shelfList.querySelector('[data-open]');
-      if (next) next.focus({ preventScroll: true });
-      else shelfClear.focus({ preventScroll: true });
-    }
+
+    if (!event.target.closest('[data-open-index]')) return;
+    closeSandbox({ animate: false, restoreFocus: false });
+    if (window.SciLampNav) window.SciLampNav.page('index');
   });
 
-  function resetClear() {
-    clearArmed = false;
-    clearTimeout(clearTimer);
-    shelfClear.classList.remove('is-armed');
-    shelfClear.textContent = 'clear all';
-  }
-
-  shelfClear.addEventListener('click', () => {
-    if (!window.SciLampStore || SciLampStore.products().length === 0) return;
-    if (!clearArmed) {
-      clearArmed = true;
-      shelfClear.classList.add('is-armed');
-      shelfClear.textContent = 'confirm clear all';
-      saveStatus.textContent = 'Press confirm clear all to remove every saved product.';
-      clearTimer = setTimeout(resetClear, 4000);
-      return;
-    }
-    SciLampStore.clearProducts();
-    resetClear();
-    renderShelf();
-    saveStatus.textContent = 'All saved products cleared. Discoveries stay lit in the index.';
+  document.addEventListener('scilamp:favorites', () => {
+    const btn = resultEl.querySelector('[data-fav-product]');
+    if (!btn || !lastProduct || !window.SciLampFx) return;
+    const record = SciLampFx.productRecord(lastProduct);
+    if (record) SciLampFx.syncFavorite(btn, SciLampStore.isFavorite(record.id));
   });
 
-  shelfIndex.addEventListener('click', () => {
-    if (window.SciLampNav) SciLampNav.page('index');
+  document.addEventListener('scilamp:lang', () => {
+    renderPalette();
+    paintSelection();
+    paintInfo();
+    renderAtoms();
+    paintCount();
+    if (lastProduct && lastInfo) paintProduct(lastProduct, lastInfo, false);
+    else if (lastFailure) paintFailure();
+    else paintIdle();
+    renderChallenges();
+    renderHint();
+    saveStatus.textContent = '';
   });
-
-  document.addEventListener('scilamp:products', renderShelf);
-
-  /* the sheet's "my products" action scrolls the shelf into view */
-  window.scilampShowShelf = () => {
-    shelfEl.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-    shelfEl.classList.add('is-called');
-    setTimeout(() => shelfEl.classList.remove('is-called'), 1400);
-  };
 
   infoFullBtn.addEventListener('click', () => {
     if (!inspected) return;
@@ -599,12 +626,25 @@
 
   /* ---------- open / close ---------- */
 
+  let closeTimer = 0;
+
+  function finishClose() {
+    clearTimeout(closeTimer);
+    sandbox.hidden = true;
+    sandbox.classList.remove('is-entering', 'is-leaving');
+    sandbox.setAttribute('aria-hidden', 'true');
+  }
+
   function openSandbox() {
     if (open) return;
     open = true;
     window.scilampSandboxOpen = true;
 
+    clearTimeout(closeTimer);
     sandbox.hidden = false;
+    sandbox.classList.remove('is-leaving');
+    sandbox.classList.add('is-entering');
+    void sandbox.offsetWidth;
     sandbox.classList.add('is-open');
     sandbox.setAttribute('aria-hidden', 'false');
     if (window.SciLampNav) window.SciLampNav.setActive('sandbox');
@@ -617,7 +657,6 @@
     paintIdle();
     renderChallenges();
     renderHint();
-    renderShelf();
     sandbox.focus({ preventScroll: true });
 
     /* hide the table from assistive tech only after focus has left it */
@@ -626,8 +665,11 @@
     pageTable.setAttribute('aria-hidden', 'true');
   }
 
-  function closeSandbox() {
-    if (!open) return;
+  function closeSandbox({ animate = true, restoreFocus = true } = {}) {
+    if (!open) {
+      if (!animate && !sandbox.hidden) finishClose();
+      return;
+    }
     open = false;
     window.scilampSandboxOpen = false;
 
@@ -636,11 +678,15 @@
       if (tablePrevAria === null) pageTable.removeAttribute('aria-hidden');
       else pageTable.setAttribute('aria-hidden', tablePrevAria);
     }
-    if (sandbox.contains(document.activeElement)) entry.focus({ preventScroll: true });
+    if (restoreFocus && sandbox.contains(document.activeElement)) entry.focus({ preventScroll: true });
 
     sandbox.classList.remove('is-open');
-    sandbox.hidden = true;
-    sandbox.setAttribute('aria-hidden', 'true');
+    if (animate && !reduceMotion) {
+      sandbox.classList.add('is-leaving');
+      closeTimer = setTimeout(finishClose, 280);
+    } else {
+      finishClose();
+    }
     if (window.SciLampNav) {
       window.SciLampNav.setActive(pageTable.classList.contains('is-open') ? 'table' : 'home');
     }
@@ -656,5 +702,4 @@
   paintIdle();
   renderChallenges();
   renderHint();
-  renderShelf();
 })();
